@@ -21,6 +21,15 @@ class Settings(BaseSettings):
     dedup_window_seconds: int = 30
     provider_cooldown_seconds: int = 60
 
+    # Phase 6 - Reliability & Persistence Hardening
+    session_ttl_seconds: int = 86400
+    session_max_requests: int = 80
+    session_cleanup_batch_size: int = 40
+    historical_metrics_window: int = 240
+    historical_metrics_file: str = "operational_history.jsonl"
+    stale_execution_seconds: int = 300
+    request_timeout_seconds: int = 120
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

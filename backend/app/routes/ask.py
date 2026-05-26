@@ -6,6 +6,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
+from app.observability.logger import log_event
+from app.observability.tracing import trace_context
 from app.orchestration.queue_manager import queue_manager
 from app.orchestration.scheduler import assign_priority
 from app.providers import ProviderError
@@ -13,12 +15,12 @@ from app.routes.schemas import AskRequest, AskResponse
 from app.services.cost_tracker import cost_tracker
 from app.services.dedup_tracker import dedup_tracker
 from app.services.request_service import create_queued_request
-from app.services.response_cache import response_cache
 from app.services.session_service import (
     get_or_create_session,
     get_recent_session_context,
     touch_session,
 )
+from app.settings import settings
 
 router = APIRouter(tags=["requests"])
 logger = logging.getLogger("qorvexis.request")
@@ -26,7 +28,12 @@ logger = logging.getLogger("qorvexis.request")
 
 @router.post("/ask", response_model=AskResponse)
 def ask(payload: AskRequest, db: Session = Depends(get_db)) -> AskResponse:
-    logger.info("request.received prompt_length=%s", len(payload.prompt))
+    with trace_context(session_id=payload.session_id):
+        return _ask_traced(payload, db)
+
+
+def _ask_traced(payload: AskRequest, db: Session) -> AskResponse:
+    log_event(logger, "info", "request.received", prompt_length=len(payload.prompt))
     active_session = get_or_create_session(
         db=db,
         session_id=payload.session_id,
@@ -48,12 +55,13 @@ def ask(payload: AskRequest, db: Session = Depends(get_db)) -> AskResponse:
             priority=priority,
             memory_context=memory_context,
         )
-        execution = future.result(timeout=120)
+        execution = future.result(timeout=settings.request_timeout_seconds)
         inference_result = execution["inference_result"]
     except ProviderError as exc:
-        logger.error("request.provider_failure error=%s", exc)
+        log_event(logger, "error", "request.provider_failure", error=str(exc))
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except TimeoutError as exc:
+        log_event(logger, "error", "request.timeout", timeout_seconds=settings.request_timeout_seconds)
         raise HTTPException(status_code=504, detail="Request execution timed out.") from exc
 
     try:
@@ -62,14 +70,13 @@ def ask(payload: AskRequest, db: Session = Depends(get_db)) -> AskResponse:
     except SQLAlchemyError as exc:
         db.rollback()
         message = str(exc.__cause__ or exc)
-        logger.error("request.database_failure error=%s", message)
+        log_event(logger, "error", "request.database_failure", error=message)
         raise HTTPException(
             status_code=503,
             detail=f"Database unavailable. Check DATABASE_URL. {message}",
         ) from exc
 
-    # Phase 5 — detect cache hit and dedup status
-    is_cache_hit = inference_result.category == "cached"
+    is_cache_hit = bool(execution.get("cache_hit", inference_result.category == "cached"))
     is_deduplicated = dedup_tracker.is_duplicate(payload.prompt)
     estimated_cost = (
         cost_tracker.record_request(
@@ -79,15 +86,21 @@ def ask(payload: AskRequest, db: Session = Depends(get_db)) -> AskResponse:
         else 0.0
     )
 
-    logger.info(
-        "request.complete provider=%s original_provider=%s fallback_used=%s category=%s latency_ms=%s cache_hit=%s dedup=%s",
-        inference_result.provider,
-        inference_result.original_provider,
-        inference_result.fallback_used,
-        inference_result.category,
-        inference_result.latency_ms,
-        is_cache_hit,
-        is_deduplicated,
+    log_event(
+        logger,
+        "info",
+        "request.complete",
+        request_id=queued_request.id,
+        session_id=active_session.id,
+        provider=inference_result.provider,
+        original_provider=inference_result.original_provider,
+        fallback_used=inference_result.fallback_used,
+        category=inference_result.category,
+        queue_wait_ms=execution["queue_wait_ms"],
+        execution_duration_ms=execution["execution_duration_ms"],
+        lifecycle_state="completed",
+        cache_hit=is_cache_hit,
+        deduplicated=is_deduplicated,
     )
     return AskResponse(
         request_id=queued_request.id,

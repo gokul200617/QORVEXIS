@@ -26,6 +26,7 @@ def create_queued_request(
         request_priority=priority,
         request_status="queued",
         lifecycle_state="queued",
+        received_at=datetime.now(timezone.utc),
         queued_at=datetime.now(timezone.utc),
     )
 
@@ -49,6 +50,7 @@ def mark_request_success(
     inference_result: InferenceResult,
     queue_wait_ms: int,
     execution_duration_ms: int,
+    cache_hit: bool = False,
 ) -> None:
     request_log = db.get(RequestLog, request_id)
     if not request_log:
@@ -64,6 +66,8 @@ def mark_request_success(
     request_log.request_status = "success"
     request_log.queue_wait_ms = queue_wait_ms
     request_log.execution_duration_ms = execution_duration_ms
+    request_log.provider_response_at = datetime.now(timezone.utc)
+    request_log.cache_hit = cache_hit
     db.add(request_log)
     db.commit()
 

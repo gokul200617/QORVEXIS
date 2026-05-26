@@ -178,6 +178,47 @@
           </div>
         </section>
         <section class="ops-section">
+          <h3>Reliability integrity</h3>
+          <div class="metric-grid">
+            <div class="metric-card">
+              <span class="metric-label">Violations</span>
+              <strong id="integrityViolations">--</strong>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Recovery actions</span>
+              <strong id="recoveryActions">--</strong>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Queue anomalies</span>
+              <strong id="queueAnomalies">--</strong>
+            </div>
+          </div>
+        </section>
+        <section class="ops-section">
+          <h3>Active queue inspector</h3>
+          <div id="activeQueueInspector" class="ops-list">
+            <span class="empty-state">No queue diagnostics yet.</span>
+          </div>
+        </section>
+        <section class="ops-section">
+          <h3>Execution timelines</h3>
+          <div id="executionTimelines" class="ops-list">
+            <span class="empty-state">No timelines yet.</span>
+          </div>
+        </section>
+        <section class="ops-section">
+          <h3>Lifecycle violations</h3>
+          <div id="violationLog" class="ops-list">
+            <span class="empty-state">No violations recorded.</span>
+          </div>
+        </section>
+        <section class="ops-section">
+          <h3>Scheduler decisions</h3>
+          <div id="schedulerDecisions" class="ops-list">
+            <span class="empty-state">No scheduler transitions yet.</span>
+          </div>
+        </section>
+        <section class="ops-section">
           <h3>Cache metrics</h3>
           <div class="metric-grid" id="cacheMetrics">
             <div class="metric-card">

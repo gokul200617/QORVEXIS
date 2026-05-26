@@ -105,6 +105,18 @@ def get_provider_metrics(db: Session) -> dict:
             }
         )
 
+    from app.services.historical_metrics import historical_metrics
+
+    for provider in providers:
+        historical_metrics.record(
+            "provider_latency",
+            {
+                "provider": provider["provider"],
+                "average_latency_ms": provider["average_latency_ms"],
+                "success_rate": provider["success_rate"],
+                "failure_count": provider["failure_count"],
+            },
+        )
     return {"providers": providers}
 
 
@@ -169,7 +181,18 @@ def get_category_metrics(db: Session) -> dict:
 
 
 def get_queue_metrics() -> dict:
-    return queue_manager.snapshot()
+    snapshot = queue_manager.snapshot()
+    from app.services.historical_metrics import historical_metrics
+
+    historical_metrics.record(
+        "queue_depth",
+        {
+            "queue_depth": snapshot["queue_depth"],
+            "active_executions": snapshot["active_executions"],
+            "queue_anomalies": snapshot.get("queue_anomalies", 0),
+        },
+    )
+    return snapshot
 
 
 def get_capacity_metrics() -> dict:
@@ -262,7 +285,11 @@ def get_provider_scores() -> dict:
 
 def get_orchestration_health() -> dict:
     from app.services.ops_scorer import compute_orchestration_health
-    return compute_orchestration_health()
+    from app.services.historical_metrics import historical_metrics
+
+    health = compute_orchestration_health()
+    historical_metrics.record("orchestration_health", health)
+    return health
 
 
 def get_cost_metrics() -> dict:
@@ -279,3 +306,51 @@ def get_dedup_metrics() -> dict:
     from app.services.dedup_tracker import dedup_tracker
     return dedup_tracker.snapshot()
 
+
+def get_reliability_metrics(db: Session) -> dict:
+    from app.observability.diagnostics import detect_stale_requests
+    from app.reliability.integrity import integrity_registry
+    from app.reliability.recovery import recovery_registry
+    from app.services.historical_metrics import historical_metrics
+    from app.services.session_service import get_session_memory_metrics
+
+    overview = get_overview_metrics(db)
+    return {
+        "orchestration_health": get_orchestration_health(),
+        "integrity": integrity_registry.snapshot(),
+        "recovery": recovery_registry.snapshot(),
+        "queue": get_queue_metrics(),
+        "stale_requests": detect_stale_requests(db),
+        "session_memory": get_session_memory_metrics(db),
+        "success_rate": overview["success_rate"],
+        "failure_rate": round(100 - overview["success_rate"], 2),
+        "history": historical_metrics.snapshot(),
+    }
+
+
+def get_lifecycle_integrity_metrics(db: Session) -> dict:
+    from app.observability.diagnostics import get_lifecycle_transition_view
+    from app.reliability.integrity import integrity_registry
+
+    return {
+        **get_lifecycle_metrics(db),
+        **get_lifecycle_transition_view(db),
+        "integrity": integrity_registry.snapshot(),
+    }
+
+
+def get_recovery_metrics(db: Session) -> dict:
+    from app.observability.diagnostics import detect_stale_requests
+    from app.reliability.recovery import recovery_registry
+
+    return {
+        **recovery_registry.snapshot(),
+        "stale_requests": detect_stale_requests(db),
+        "queue": queue_manager.diagnostics(db),
+    }
+
+
+def get_diagnostics_metrics(db: Session) -> dict:
+    from app.observability.diagnostics import get_diagnostics
+
+    return get_diagnostics(db)

@@ -53,6 +53,13 @@ const dedupRate = document.getElementById("dedupRate");
 const totalCost = document.getElementById("totalCost");
 const avgCostPerRequest = document.getElementById("avgCostPerRequest");
 const totalTokens = document.getElementById("totalTokens");
+const integrityViolations = document.getElementById("integrityViolations");
+const recoveryActions = document.getElementById("recoveryActions");
+const queueAnomalies = document.getElementById("queueAnomalies");
+const activeQueueInspector = document.getElementById("activeQueueInspector");
+const executionTimelines = document.getElementById("executionTimelines");
+const violationLog = document.getElementById("violationLog");
+const schedulerDecisions = document.getElementById("schedulerDecisions");
 
 let requestCount = 0;
 let successCount = 0;
@@ -341,6 +348,57 @@ function renderCostMetrics(metrics) {
     : "--";
 }
 
+function renderDiagnostics(metrics) {
+  const queue = metrics.queue || {};
+  const integrity = metrics.integrity || {};
+  const recovery = metrics.recovery || {};
+  const queuedItems = queue.queued_items || [];
+  const timelines = metrics.timelines || [];
+  const violations = (integrity.recent_violations || []).slice(0, 8);
+  const transitions = (metrics.transitions || []).slice(0, 8);
+
+  integrityViolations.textContent = integrity.violation_count || 0;
+  recoveryActions.textContent = recovery.recovery_action_count || 0;
+  queueAnomalies.textContent = queue.queue_anomalies || 0;
+
+  activeQueueInspector.innerHTML = queuedItems.length
+    ? queuedItems.map((item) => `
+      <div class="ops-row">
+        <strong>#${item.request_id} | ${escapeHtml(item.provider)}</strong>
+        <span>priority ${item.priority_sort} | queued ${formatLatency(item.queued_for_ms)}</span>
+      </div>
+    `).join("")
+    : '<span class="empty-state">Queue is currently empty.</span>';
+
+  executionTimelines.innerHTML = timelines.length
+    ? timelines.map((item) => `
+      <div class="ops-row">
+        <strong>#${item.request_id} | ${escapeHtml(item.lifecycle_state)}</strong>
+        <span>${escapeHtml(item.provider || "unassigned")} | queue ${formatLatency(item.queue_wait_ms)} | execution ${formatLatency(item.execution_duration_ms)}</span>
+        <span>received ${escapeHtml(item.received_at || "--")} | completed ${escapeHtml(item.completed_at || "--")}</span>
+      </div>
+    `).join("")
+    : '<span class="empty-state">No request timelines yet.</span>';
+
+  violationLog.innerHTML = violations.length
+    ? violations.map((item) => `
+      <div class="ops-row">
+        <strong>#${item.request_id || "--"} | ${escapeHtml(item.reason)}</strong>
+        <span>${escapeHtml(item.current_state || "unknown")} -> ${escapeHtml(item.attempted_state)}</span>
+      </div>
+    `).join("")
+    : '<span class="empty-state">No violations recorded.</span>';
+
+  schedulerDecisions.innerHTML = transitions.length
+    ? transitions.map((item) => `
+      <div class="ops-row">
+        <strong>#${item.request_id} | ${escapeHtml(item.state)}</strong>
+        <span>${escapeHtml(item.detail || "transition")} | ${escapeHtml(item.created_at)}</span>
+      </div>
+    `).join("")
+    : '<span class="empty-state">No lifecycle transitions yet.</span>';
+}
+
 async function refreshMetrics() {
   try {
     const [
@@ -357,6 +415,7 @@ async function refreshMetrics() {
       costsResponse,
       failoverResponse,
       dedupResponse,
+      diagnosticsResponse,
     ] = await Promise.all([
       fetch(`${API_BASE_URL}/metrics/overview`),
       fetch(`${API_BASE_URL}/metrics/providers`),
@@ -371,6 +430,7 @@ async function refreshMetrics() {
       fetch(`${API_BASE_URL}/metrics/costs`),
       fetch(`${API_BASE_URL}/metrics/failover`),
       fetch(`${API_BASE_URL}/metrics/dedup`),
+      fetch(`${API_BASE_URL}/metrics/diagnostics`),
     ]);
 
     if (
@@ -412,6 +472,7 @@ async function refreshMetrics() {
     if (costsResponse.ok) renderCostMetrics(await costsResponse.json());
     if (failoverResponse.ok) renderCooldowns(await failoverResponse.json());
     if (dedupResponse.ok) renderDedupMetrics(await dedupResponse.json());
+    if (diagnosticsResponse.ok) renderDiagnostics(await diagnosticsResponse.json());
   } catch (error) {
     backendTotal.textContent = "--";
     backendFailures.textContent = "--";

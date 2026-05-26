@@ -1,0 +1,4178 @@
+{
+  "database_health": {
+    "error": null,
+    "ok": true
+  },
+  "generated_at": "2026-05-26T17:17:02.861368+00:00",
+  "summary": {
+    "fail": 3,
+    "pass": 5,
+    "skipped": 2
+  },
+  "tests": [
+    {
+      "exact_code_region_involved": null,
+      "exact_file_involved": null,
+      "execution_steps": [
+        "Created requests in completed, failed, cancelled, and executing states.",
+        "Attempted completed->queued, failed->executing, cancelled->completed, executing->scheduled.",
+        "Checked state preservation, integrity registry, lifecycle violation logs, and metrics endpoint."
+      ],
+      "logs_errors": [],
+      "objective": "Reject illegal terminal/backward lifecycle transitions.",
+      "observed_behavior": {
+        "attempts": [
+          {
+            "accepted": false,
+            "final_state": "completed",
+            "from": "completed",
+            "request_id": 1,
+            "to": "queued"
+          },
+          {
+            "accepted": false,
+            "final_state": "failed",
+            "from": "failed",
+            "request_id": 2,
+            "to": "executing"
+          },
+          {
+            "accepted": false,
+            "final_state": "cancelled",
+            "from": "cancelled",
+            "request_id": 3,
+            "to": "completed"
+          },
+          {
+            "accepted": false,
+            "final_state": "executing",
+            "from": "executing",
+            "request_id": 4,
+            "to": "scheduled"
+          }
+        ],
+        "integrity_violations_added": 4,
+        "lifecycle_violation_logs_seen": 4,
+        "metrics_keys": [
+          "integrity",
+          "priorities",
+          "states",
+          "transitions"
+        ]
+      },
+      "recommended_fix": null,
+      "risk_flags": [],
+      "status": "PASS",
+      "suspected_root_cause": null,
+      "test_name": "TEST 1 - Lifecycle Integrity Validation"
+    },
+    {
+      "exact_code_region_involved": "sweep_stale_executions",
+      "exact_file_involved": "backend/app/reliability/recovery.py",
+      "execution_steps": [
+        "Created stale executing and scheduled requests older than stale_execution_seconds.",
+        "Injected one stale request into queue_manager active execution state to simulate worker crash.",
+        "Ran sweep_stale_executions and inspected DB state plus active execution registry."
+      ],
+      "logs_errors": [
+        "Sweeper repaired DB lifecycle but did not clean in-memory active execution state."
+      ],
+      "objective": "Detect stale scheduled/executing work and repair lifecycle state.",
+      "observed_behavior": {
+        "active_request_ids_after_sweep": [
+          5
+        ],
+        "orphaned_executions": [
+          {
+            "request_id": 5,
+            "state": "failed"
+          }
+        ],
+        "recovered_count": 2,
+        "recovery_registry": {
+          "recent_actions": [
+            {
+              "action": "stale_execution_cleanup",
+              "created_at": "2026-05-26T17:16:19.438172+00:00",
+              "reason": "execution exceeded stale threshold",
+              "request_id": 6
+            },
+            {
+              "action": "stale_execution_cleanup",
+              "created_at": "2026-05-26T17:16:19.398809+00:00",
+              "reason": "execution exceeded stale threshold",
+              "request_id": 5
+            }
+          ],
+          "recovery_action_count": 2
+        },
+        "states_after_sweep": {
+          "5": "failed",
+          "6": "failed"
+        }
+      },
+      "recommended_fix": "Add a narrow queue_manager cleanup hook for stale request ids after persistent recovery succeeds.",
+      "risk_flags": [
+        "lifecycle corruption",
+        "queue corruption"
+      ],
+      "status": "FAIL",
+      "suspected_root_cause": "Recovery sweeper only updates persistent lifecycle rows and has no cleanup path for QueueManager active execution bookkeeping.",
+      "test_name": "TEST 2 - Recovery Sweeper Validation"
+    },
+    {
+      "exact_code_region_involved": null,
+      "exact_file_involved": null,
+      "execution_steps": [],
+      "logs_errors": [],
+      "objective": "Skipped by --skip-heavy.",
+      "observed_behavior": {},
+      "recommended_fix": null,
+      "risk_flags": [],
+      "status": "SKIPPED",
+      "suspected_root_cause": null,
+      "test_name": "TEST 3 - Queue Stress Test"
+    },
+    {
+      "exact_code_region_involved": "run_inference provider/fallback exception handling",
+      "exact_file_involved": "backend/app/services/inference_service.py",
+      "execution_steps": [
+        "Injected repeated Gemini and Groq provider failures through patched provider execution.",
+        "Ran direct inference calls to exercise fallback and double-failure paths.",
+        "Checked cooldown and provider score snapshots."
+      ],
+      "logs_errors": [
+        "Provider scoring did not update for both providers."
+      ],
+      "objective": "Force repeated provider failures and verify failover, cooldown, and scoring behavior.",
+      "observed_behavior": {
+        "failover": {
+          "providers": [
+            {
+              "consecutive_failures": 0,
+              "cooldown_remaining_seconds": 60.0,
+              "is_cooled_down": true,
+              "provider": "gemini",
+              "total_cooldowns": 1,
+              "window_events": 8,
+              "window_failure_rate": 50.0
+            }
+          ]
+        },
+        "outcomes": [
+          {
+            "error": "ProviderError('Primary and fallback providers failed. primary=phase6 forced gemini failure; fallback=phase6 forced groq failure')",
+            "index": 0
+          },
+          {
+            "error": "ProviderError('Primary and fallback providers failed. primary=phase6 forced gemini failure; fallback=phase6 forced groq failure')",
+            "index": 1
+          },
+          {
+            "error": "ProviderError('Primary and fallback providers failed. primary=phase6 forced gemini failure; fallback=phase6 forced groq failure')",
+            "index": 2
+          },
+          {
+            "error": "ProviderError('Primary and fallback providers failed. primary=phase6 forced gemini failure; fallback=phase6 forced groq failure')",
+            "index": 3
+          },
+          {
+            "fallback_used": false,
+            "index": 4,
+            "provider": "gemini"
+          },
+          {
+            "fallback_used": false,
+            "index": 5,
+            "provider": "gemini"
+          },
+          {
+            "fallback_used": false,
+            "index": 6,
+            "provider": "gemini"
+          },
+          {
+            "fallback_used": false,
+            "index": 7,
+            "provider": "gemini"
+          }
+        ],
+        "scores": {
+          "providers": [
+            {
+              "average_latency_ms": 0.0,
+              "failure_count": 4,
+              "provider": "gemini",
+              "request_count": 8,
+              "score": 60.8,
+              "success_count": 4,
+              "success_rate": 50.0
+            }
+          ]
+        }
+      },
+      "recommended_fix": "Ensure both primary and fallback failures update failover manager and provider scorer symmetrically.",
+      "risk_flags": [
+        "failover instability"
+      ],
+      "status": "FAIL",
+      "suspected_root_cause": "Failover/scoring state did not react consistently to injected provider failures.",
+      "test_name": "TEST 4 - Provider Failure Storm"
+    },
+    {
+      "exact_code_region_involved": null,
+      "exact_file_involved": null,
+      "execution_steps": [
+        "Created stale sessions and recent sessions.",
+        "Created more requests than session_max_requests in one session.",
+        "Ran cleanup_stale_sessions and enforce_session_bounds, then checked metrics."
+      ],
+      "logs_errors": [],
+      "objective": "Validate stale session cleanup and per-session request bounds.",
+      "observed_behavior": {
+        "bounded_session_deleted_requests": 15,
+        "bounded_session_request_count": 80,
+        "cleanup_evictions": 20,
+        "metrics": {
+          "active_sessions": 1,
+          "cleanup_evictions": 0,
+          "estimated_memory_items": 6,
+          "session_backed_requests": 80,
+          "session_max_requests": 80,
+          "session_ttl_seconds": 86400
+        },
+        "remaining_stale_sessions": 0
+      },
+      "recommended_fix": null,
+      "risk_flags": [],
+      "status": "PASS",
+      "suspected_root_cause": null,
+      "test_name": "TEST 5 - Session Memory Validation"
+    },
+    {
+      "exact_code_region_involved": "log_event; QueueManager.enqueue/_execute",
+      "exact_file_involved": "backend/app/observability/logger.py; backend/app/orchestration/queue_manager.py",
+      "execution_steps": [
+        "Submitted a traced request through queue execution.",
+        "Captured structured log events in memory.",
+        "Checked required field coverage and lifecycle reconstruction."
+      ],
+      "logs_errors": [
+        "Structured logs missing required fields: ['execution_duration_ms', 'fallback_used', 'session_id']"
+      ],
+      "objective": "Verify logs contain fields needed to reconstruct lifecycle, scheduler, cache, and failover decisions.",
+      "observed_behavior": {
+        "future_completed": 1,
+        "future_failed": 0,
+        "lifecycle_events_seen": [
+          "lifecycle.violation",
+          "lifecycle.violation",
+          "lifecycle.violation",
+          "lifecycle.violation",
+          "lifecycle.transition",
+          "recovery.action",
+          "lifecycle.transition",
+          "recovery.action",
+          "queue.enqueue",
+          "lifecycle.transition",
+          "lifecycle.transition",
+          "scheduler.execute",
+          "cache.miss",
+          "lifecycle.transition"
+        ],
+        "request_id": 122,
+        "required_fields_missing": [
+          "execution_duration_ms",
+          "fallback_used",
+          "session_id"
+        ],
+        "required_fields_present": [
+          "cache_hit",
+          "lifecycle_state",
+          "provider",
+          "queue_wait_ms",
+          "request_id"
+        ],
+        "sample_errors": []
+      },
+      "recommended_fix": "Carry session_id through QueuedExecution and include a common field envelope on all queue/lifecycle/cache/provider completion logs.",
+      "risk_flags": [
+        "observability inconsistency"
+      ],
+      "status": "FAIL",
+      "suspected_root_cause": "Log events are structured JSON, but required trace fields are spread unevenly and session context is not propagated into queue worker traces.",
+      "test_name": "TEST 6 - Structured Observability Validation"
+    },
+    {
+      "exact_code_region_involved": null,
+      "exact_file_involved": null,
+      "execution_steps": [
+        "Recorded historical samples beyond the configured window.",
+        "Read operational_history.jsonl tail and parsed JSON lines.",
+        "Checked snapshot size and required sample fields."
+      ],
+      "logs_errors": [],
+      "objective": "Verify operational_history.jsonl append format and rolling in-memory window.",
+      "observed_behavior": {
+        "invalid_tail_records": [],
+        "snapshot_len": 240,
+        "tail_parse_errors": []
+      },
+      "recommended_fix": null,
+      "risk_flags": [],
+      "status": "PASS",
+      "suspected_root_cause": null,
+      "test_name": "TEST 7 - Historical Metrics Validation"
+    },
+    {
+      "exact_code_region_involved": null,
+      "exact_file_involved": null,
+      "execution_steps": [
+        "Submitted concurrent work while recovery sweeper ran in parallel.",
+        "Attempted duplicate enqueue for one request id.",
+        "Checked duplicate transition events and queue diagnostics."
+      ],
+      "logs_errors": [],
+      "objective": "Stress simultaneous insertion, duplicate enqueue, scheduler work, and recovery overlap.",
+      "observed_behavior": {
+        "completed_futures": 121,
+        "duplicate_execution_transitions": [],
+        "failed_futures": 1,
+        "queue_diagnostics": {
+          "active_request_ids": [],
+          "orphaned_executions": [],
+          "queue_anomalies": 1,
+          "queued_items": [],
+          "queued_request_ids": []
+        },
+        "sample_errors": [
+          "RuntimeError('Duplicate queue insertion rejected.')"
+        ],
+        "sweeper_errors": []
+      },
+      "recommended_fix": null,
+      "risk_flags": [],
+      "status": "PASS",
+      "suspected_root_cause": null,
+      "test_name": "TEST 8 - Concurrency Safety Validation"
+    },
+    {
+      "exact_code_region_involved": null,
+      "exact_file_involved": null,
+      "execution_steps": [
+        "Checked real database health first.",
+        "Monkeypatched database health engine to an unreachable local Postgres URL.",
+        "Called health and reliability metrics with a closed/broken session where possible."
+      ],
+      "logs_errors": [],
+      "objective": "Simulate unavailable database and verify degraded reporting without process crash.",
+      "observed_behavior": {
+        "degraded_health": [
+          false,
+          "connection to server at \"127.0.0.1\", port 1 failed: timeout expired\n"
+        ],
+        "metrics_observed": {
+          "diagnostics": {
+            "cache": {
+              "entries": 122,
+              "evictions": 0,
+              "hit_ratio": 0.0,
+              "hits": 0,
+              "max_entries": 256,
+              "misses": 122,
+              "total_lookups": 122,
+              "ttl_seconds": 300
+            },
+            "database_error": "connection to server at \"127.0.0.1\", port 1 failed: timeout expired\n",
+            "integrity": {
+              "recent_violations": [
+                {
+                  "attempted_state": "queued",
+                  "created_at": "2026-05-26T17:16:35.456177+00:00",
+                  "current_state": "queued",
+                  "detail": null,
+                  "reason": "duplicate_queue_insertion",
+                  "request_id": 243
+                },
+                {
+                  "attempted_state": "scheduled",
+                  "created_at": "2026-05-26T17:16:19.244698+00:00",
+                  "current_state": "executing",
+                  "detail": "phase6 invalid transition",
+                  "reason": "invalid_transition:executing->scheduled",
+                  "request_id": 4
+                },
+                {
+                  "attempted_state": "completed",
+                  "created_at": "2026-05-26T17:16:19.207643+00:00",
+                  "current_state": "cancelled",
+                  "detail": "phase6 invalid transition",
+                  "reason": "terminal_state:cancelled",
+                  "request_id": 3
+                },
+                {
+                  "attempted_state": "executing",
+                  "created_at": "2026-05-26T17:16:19.173949+00:00",
+                  "current_state": "failed",
+                  "detail": "phase6 invalid transition",
+                  "reason": "terminal_state:failed",
+                  "request_id": 2
+                },
+                {
+                  "attempted_state": "queued",
+                  "created_at": "2026-05-26T17:16:19.142624+00:00",
+                  "current_state": "completed",
+                  "detail": "phase6 invalid transition",
+                  "reason": "terminal_state:completed",
+                  "request_id": 1
+                }
+              ],
+              "violation_count": 5
+            },
+            "provider_cooldowns": {
+              "providers": [
+                {
+                  "consecutive_failures": 0,
+                  "cooldown_remaining_seconds": 16.6,
+                  "is_cooled_down": true,
+                  "provider": "gemini",
+                  "total_cooldowns": 1,
+                  "window_events": 8,
+                  "window_failure_rate": 50.0
+                },
+                {
+                  "consecutive_failures": 0,
+                  "cooldown_remaining_seconds": 0,
+                  "is_cooled_down": false,
+                  "provider": "groq",
+                  "total_cooldowns": 0,
+                  "window_events": 122,
+                  "window_failure_rate": 0.0
+                }
+              ]
+            },
+            "queue": {
+              "active_request_ids": [],
+              "orphaned_executions": [],
+              "queue_anomalies": 1,
+              "queued_items": [],
+              "queued_request_ids": []
+            },
+            "stale_requests": [],
+            "status": "degraded",
+            "timelines": [],
+            "transitions": []
+          },
+          "recovery": {
+            "database_error": "connection to server at \"127.0.0.1\", port 1 failed: timeout expired\n",
+            "queue": {
+              "active_request_ids": [],
+              "orphaned_executions": [],
+              "queue_anomalies": 1,
+              "queued_items": [],
+              "queued_request_ids": []
+            },
+            "recent_actions": [
+              {
+                "action": "stale_execution_cleanup",
+                "created_at": "2026-05-26T17:16:19.438172+00:00",
+                "reason": "execution exceeded stale threshold",
+                "request_id": 6
+              },
+              {
+                "action": "stale_execution_cleanup",
+                "created_at": "2026-05-26T17:16:19.398809+00:00",
+                "reason": "execution exceeded stale threshold",
+                "request_id": 5
+              }
+            ],
+            "recovery_action_count": 2,
+            "stale_requests": [],
+            "status": "degraded"
+          },
+          "reliability": {
+            "database_error": "connection to server at \"127.0.0.1\", port 1 failed: timeout expired\n",
+            "history": {
+              "orchestration_health": [
+                {
+                  "components": {
+                    "cache_efficiency": 0.0,
+                    "execution_efficiency": 35.62,
+                    "failover_health": 100.0,
+                    "provider_reliability": 79.56,
+                    "queue_efficiency": 100.0
+                  },
+                  "cost_summary": {
+                    "average_cost_per_request": 1e-05,
+                    "providers": [
+                      {
+                        "cost_per_1k_tokens": 0.00025,
+                        "estimated_cost": 2.1e-05,
+                        "provider": "gemini",
+                        "total_tokens": 82
+                      }
+                    ],
+                    "total_estimated_cost": 2.1e-05,
+                    "total_prompt_tokens": 2,
+                    "total_requests": 2,
+                    "total_response_tokens": 80
+                  },
+                  "dedup_stats": {
+                    "active_entries": 1,
+                    "dedup_rate": 50.0,
+                    "duplicates_detected": 1,
+                    "total_checked": 2,
+                    "window_seconds": 30
+                  },
+                  "orchestration_health_score": 67.01,
+                  "recorded_at": "2026-05-26T17:12:45.025630+00:00"
+                },
+                {
+                  "components": {
+                    "cache_efficiency": 0.0,
+                    "execution_efficiency": 35.62,
+                    "failover_health": 100.0,
+                    "provider_reliability": 79.56,
+                    "queue_efficiency": 100.0
+                  },
+                  "cost_summary": {
+                    "average_cost_per_request": 1e-05,
+                    "providers": [
+                      {
+                        "cost_per_1k_tokens": 0.00025,
+                        "estimated_cost": 2.1e-05,
+                        "provider": "gemini",
+                        "total_tokens": 82
+                      }
+                    ],
+                    "total_estimated_cost": 2.1e-05,
+                    "total_prompt_tokens": 2,
+                    "total_requests": 2,
+                    "total_response_tokens": 80
+                  },
+                  "dedup_stats": {
+                    "active_entries": 1,
+                    "dedup_rate": 50.0,
+                    "duplicates_detected": 1,
+                    "total_checked": 2,
+                    "window_seconds": 30
+                  },
+                  "orchestration_health_score": 67.01,
+                  "recorded_at": "2026-05-26T17:13:45.181389+00:00"
+                },
+                {
+                  "components": {
+                    "cache_efficiency": 0.0,
+                    "execution_efficiency": 35.62,
+                    "failover_health": 100.0,
+                    "provider_reliability": 79.56,
+                    "queue_efficiency": 100.0
+                  },
+                  "cost_summary": {
+                    "average_cost_per_request": 1e-05,
+                    "providers": [
+                      {
+                        "cost_per_1k_tokens": 0.00025,
+                        "estimated_cost": 2.1e-05,
+                        "provider": "gemini",
+                        "total_tokens": 82
+                      }
+                    ],
+                    "total_estimated_cost": 2.1e-05,
+                    "total_prompt_tokens": 2,
+                    "total_requests": 2,
+                    "total_response_tokens": 80
+                  },
+                  "dedup_stats": {
+                    "active_entries": 1,
+                    "dedup_rate": 50.0,
+                    "duplicates_detected": 1,
+                    "total_checked": 2,
+                    "window_seconds": 30
+                  },
+                  "orchestration_health_score": 67.01,
+                  "recorded_at": "2026-05-26T17:14:45.281554+00:00"
+                },
+                {
+                  "components": {
+                    "cache_efficiency": 0.0,
+                    "execution_efficiency": 35.62,
+                    "failover_health": 100.0,
+                    "provider_reliability": 79.56,
+                    "queue_efficiency": 100.0
+                  },
+                  "cost_summary": {
+                    "average_cost_per_request": 1e-05,
+                    "providers": [
+                      {
+                        "cost_per_1k_tokens": 0.00025,
+                        "estimated_cost": 2.1e-05,
+                        "provider": "gemini",
+                        "total_tokens": 82
+                      }
+                    ],
+                    "total_estimated_cost": 2.1e-05,
+                    "total_prompt_tokens": 2,
+                    "total_requests": 2,
+                    "total_response_tokens": 80
+                  },
+                  "dedup_stats": {
+                    "active_entries": 1,
+                    "dedup_rate": 50.0,
+                    "duplicates_detected": 1,
+                    "total_checked": 2,
+                    "window_seconds": 30
+                  },
+                  "orchestration_health_score": 67.01,
+                  "recorded_at": "2026-05-26T17:15:58.492614+00:00"
+                }
+              ],
+              "phase6_validation": [
+                {
+                  "index": 20,
+                  "recorded_at": "2026-05-26T17:16:27.516272+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 21,
+                  "recorded_at": "2026-05-26T17:16:27.516811+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 22,
+                  "recorded_at": "2026-05-26T17:16:27.518441+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 23,
+                  "recorded_at": "2026-05-26T17:16:27.519576+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 24,
+                  "recorded_at": "2026-05-26T17:16:27.520490+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 25,
+                  "recorded_at": "2026-05-26T17:16:27.521563+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 26,
+                  "recorded_at": "2026-05-26T17:16:27.522566+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 27,
+                  "recorded_at": "2026-05-26T17:16:27.523486+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 28,
+                  "recorded_at": "2026-05-26T17:16:27.524485+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 29,
+                  "recorded_at": "2026-05-26T17:16:27.526197+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 30,
+                  "recorded_at": "2026-05-26T17:16:27.527236+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 31,
+                  "recorded_at": "2026-05-26T17:16:27.528317+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 32,
+                  "recorded_at": "2026-05-26T17:16:27.529198+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 33,
+                  "recorded_at": "2026-05-26T17:16:27.530244+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 34,
+                  "recorded_at": "2026-05-26T17:16:27.531303+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 35,
+                  "recorded_at": "2026-05-26T17:16:27.532258+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 36,
+                  "recorded_at": "2026-05-26T17:16:27.534267+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 37,
+                  "recorded_at": "2026-05-26T17:16:27.535795+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 38,
+                  "recorded_at": "2026-05-26T17:16:27.535795+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 39,
+                  "recorded_at": "2026-05-26T17:16:27.537811+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 40,
+                  "recorded_at": "2026-05-26T17:16:27.538837+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 41,
+                  "recorded_at": "2026-05-26T17:16:27.539833+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 42,
+                  "recorded_at": "2026-05-26T17:16:27.541341+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 43,
+                  "recorded_at": "2026-05-26T17:16:27.542377+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 44,
+                  "recorded_at": "2026-05-26T17:16:27.543349+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 45,
+                  "recorded_at": "2026-05-26T17:16:27.544348+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 46,
+                  "recorded_at": "2026-05-26T17:16:27.545879+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 47,
+                  "recorded_at": "2026-05-26T17:16:27.548890+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 48,
+                  "recorded_at": "2026-05-26T17:16:27.549894+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 49,
+                  "recorded_at": "2026-05-26T17:16:27.550900+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 50,
+                  "recorded_at": "2026-05-26T17:16:27.551898+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 51,
+                  "recorded_at": "2026-05-26T17:16:27.552898+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 52,
+                  "recorded_at": "2026-05-26T17:16:27.553896+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 53,
+                  "recorded_at": "2026-05-26T17:16:27.555441+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 54,
+                  "recorded_at": "2026-05-26T17:16:27.557489+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 55,
+                  "recorded_at": "2026-05-26T17:16:27.558460+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 56,
+                  "recorded_at": "2026-05-26T17:16:27.559458+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 57,
+                  "recorded_at": "2026-05-26T17:16:27.561463+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 58,
+                  "recorded_at": "2026-05-26T17:16:27.562470+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 59,
+                  "recorded_at": "2026-05-26T17:16:27.564492+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 60,
+                  "recorded_at": "2026-05-26T17:16:27.566038+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 61,
+                  "recorded_at": "2026-05-26T17:16:27.567078+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 62,
+                  "recorded_at": "2026-05-26T17:16:27.567078+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 63,
+                  "recorded_at": "2026-05-26T17:16:27.569600+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 64,
+                  "recorded_at": "2026-05-26T17:16:27.569600+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 65,
+                  "recorded_at": "2026-05-26T17:16:27.570631+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 66,
+                  "recorded_at": "2026-05-26T17:16:27.572605+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 67,
+                  "recorded_at": "2026-05-26T17:16:27.573622+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 68,
+                  "recorded_at": "2026-05-26T17:16:27.574603+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 69,
+                  "recorded_at": "2026-05-26T17:16:27.576153+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 70,
+                  "recorded_at": "2026-05-26T17:16:27.577174+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 71,
+                  "recorded_at": "2026-05-26T17:16:27.578157+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 72,
+                  "recorded_at": "2026-05-26T17:16:27.579192+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 73,
+                  "recorded_at": "2026-05-26T17:16:27.580193+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 74,
+                  "recorded_at": "2026-05-26T17:16:27.581189+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 75,
+                  "recorded_at": "2026-05-26T17:16:27.584169+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 76,
+                  "recorded_at": "2026-05-26T17:16:27.585191+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 77,
+                  "recorded_at": "2026-05-26T17:16:27.585731+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 78,
+                  "recorded_at": "2026-05-26T17:16:27.586769+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 79,
+                  "recorded_at": "2026-05-26T17:16:27.588308+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 80,
+                  "recorded_at": "2026-05-26T17:16:27.590354+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 81,
+                  "recorded_at": "2026-05-26T17:16:27.591348+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 82,
+                  "recorded_at": "2026-05-26T17:16:27.592328+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 83,
+                  "recorded_at": "2026-05-26T17:16:27.593353+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 84,
+                  "recorded_at": "2026-05-26T17:16:27.595896+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 85,
+                  "recorded_at": "2026-05-26T17:16:27.596907+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 86,
+                  "recorded_at": "2026-05-26T17:16:27.597932+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 87,
+                  "recorded_at": "2026-05-26T17:16:27.598906+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 88,
+                  "recorded_at": "2026-05-26T17:16:27.599919+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 89,
+                  "recorded_at": "2026-05-26T17:16:27.600898+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 90,
+                  "recorded_at": "2026-05-26T17:16:27.601897+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 91,
+                  "recorded_at": "2026-05-26T17:16:27.602914+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 92,
+                  "recorded_at": "2026-05-26T17:16:27.603899+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 93,
+                  "recorded_at": "2026-05-26T17:16:27.605438+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 94,
+                  "recorded_at": "2026-05-26T17:16:27.606459+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 95,
+                  "recorded_at": "2026-05-26T17:16:27.611483+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 96,
+                  "recorded_at": "2026-05-26T17:16:27.612479+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 97,
+                  "recorded_at": "2026-05-26T17:16:27.613453+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 98,
+                  "recorded_at": "2026-05-26T17:16:27.615453+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 99,
+                  "recorded_at": "2026-05-26T17:16:27.617518+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 100,
+                  "recorded_at": "2026-05-26T17:16:27.620107+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 101,
+                  "recorded_at": "2026-05-26T17:16:27.621080+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 102,
+                  "recorded_at": "2026-05-26T17:16:27.622102+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 103,
+                  "recorded_at": "2026-05-26T17:16:27.627642+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 104,
+                  "recorded_at": "2026-05-26T17:16:27.636518+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 105,
+                  "recorded_at": "2026-05-26T17:16:27.638038+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 106,
+                  "recorded_at": "2026-05-26T17:16:27.642154+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 107,
+                  "recorded_at": "2026-05-26T17:16:27.643072+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 108,
+                  "recorded_at": "2026-05-26T17:16:27.644165+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 109,
+                  "recorded_at": "2026-05-26T17:16:27.648822+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 110,
+                  "recorded_at": "2026-05-26T17:16:27.650727+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 111,
+                  "recorded_at": "2026-05-26T17:16:27.652724+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 112,
+                  "recorded_at": "2026-05-26T17:16:27.653822+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 113,
+                  "recorded_at": "2026-05-26T17:16:27.660455+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 114,
+                  "recorded_at": "2026-05-26T17:16:27.665475+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 115,
+                  "recorded_at": "2026-05-26T17:16:27.666995+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 116,
+                  "recorded_at": "2026-05-26T17:16:27.667995+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 117,
+                  "recorded_at": "2026-05-26T17:16:27.669595+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 118,
+                  "recorded_at": "2026-05-26T17:16:27.671680+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 119,
+                  "recorded_at": "2026-05-26T17:16:27.672642+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 120,
+                  "recorded_at": "2026-05-26T17:16:27.673601+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 121,
+                  "recorded_at": "2026-05-26T17:16:27.674649+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 122,
+                  "recorded_at": "2026-05-26T17:16:27.675191+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 123,
+                  "recorded_at": "2026-05-26T17:16:27.677228+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 124,
+                  "recorded_at": "2026-05-26T17:16:27.678242+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 125,
+                  "recorded_at": "2026-05-26T17:16:27.680234+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 126,
+                  "recorded_at": "2026-05-26T17:16:27.682242+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 127,
+                  "recorded_at": "2026-05-26T17:16:27.683758+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 128,
+                  "recorded_at": "2026-05-26T17:16:27.683758+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 129,
+                  "recorded_at": "2026-05-26T17:16:27.686319+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 130,
+                  "recorded_at": "2026-05-26T17:16:27.687322+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 131,
+                  "recorded_at": "2026-05-26T17:16:27.688320+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 132,
+                  "recorded_at": "2026-05-26T17:16:27.690331+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 133,
+                  "recorded_at": "2026-05-26T17:16:27.695358+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 134,
+                  "recorded_at": "2026-05-26T17:16:27.696908+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 135,
+                  "recorded_at": "2026-05-26T17:16:27.697910+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 136,
+                  "recorded_at": "2026-05-26T17:16:27.699923+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 137,
+                  "recorded_at": "2026-05-26T17:16:27.700887+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 138,
+                  "recorded_at": "2026-05-26T17:16:27.701889+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 139,
+                  "recorded_at": "2026-05-26T17:16:27.702905+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 140,
+                  "recorded_at": "2026-05-26T17:16:27.703897+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 141,
+                  "recorded_at": "2026-05-26T17:16:27.706468+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 142,
+                  "recorded_at": "2026-05-26T17:16:27.707439+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 143,
+                  "recorded_at": "2026-05-26T17:16:27.708434+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 144,
+                  "recorded_at": "2026-05-26T17:16:27.709468+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 145,
+                  "recorded_at": "2026-05-26T17:16:27.710442+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 146,
+                  "recorded_at": "2026-05-26T17:16:27.712474+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 147,
+                  "recorded_at": "2026-05-26T17:16:27.716515+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 148,
+                  "recorded_at": "2026-05-26T17:16:27.717527+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 149,
+                  "recorded_at": "2026-05-26T17:16:27.717527+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 150,
+                  "recorded_at": "2026-05-26T17:16:27.719093+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 151,
+                  "recorded_at": "2026-05-26T17:16:27.720106+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 152,
+                  "recorded_at": "2026-05-26T17:16:27.721589+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 153,
+                  "recorded_at": "2026-05-26T17:16:27.723638+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 154,
+                  "recorded_at": "2026-05-26T17:16:27.725997+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 155,
+                  "recorded_at": "2026-05-26T17:16:27.727036+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 156,
+                  "recorded_at": "2026-05-26T17:16:27.729027+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 157,
+                  "recorded_at": "2026-05-26T17:16:27.731034+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 158,
+                  "recorded_at": "2026-05-26T17:16:27.732007+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 159,
+                  "recorded_at": "2026-05-26T17:16:27.734030+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 160,
+                  "recorded_at": "2026-05-26T17:16:27.735546+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 161,
+                  "recorded_at": "2026-05-26T17:16:27.736590+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 162,
+                  "recorded_at": "2026-05-26T17:16:27.737568+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 163,
+                  "recorded_at": "2026-05-26T17:16:27.739594+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 164,
+                  "recorded_at": "2026-05-26T17:16:27.740567+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 165,
+                  "recorded_at": "2026-05-26T17:16:27.742557+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 166,
+                  "recorded_at": "2026-05-26T17:16:27.743556+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 167,
+                  "recorded_at": "2026-05-26T17:16:27.744587+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 168,
+                  "recorded_at": "2026-05-26T17:16:27.746119+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 169,
+                  "recorded_at": "2026-05-26T17:16:27.747690+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 170,
+                  "recorded_at": "2026-05-26T17:16:27.748655+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 171,
+                  "recorded_at": "2026-05-26T17:16:27.750683+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 172,
+                  "recorded_at": "2026-05-26T17:16:27.751690+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 173,
+                  "recorded_at": "2026-05-26T17:16:27.752693+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 174,
+                  "recorded_at": "2026-05-26T17:16:27.753661+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 175,
+                  "recorded_at": "2026-05-26T17:16:27.757227+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 176,
+                  "recorded_at": "2026-05-26T17:16:27.758202+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 177,
+                  "recorded_at": "2026-05-26T17:16:27.759753+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 178,
+                  "recorded_at": "2026-05-26T17:16:27.760775+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 179,
+                  "recorded_at": "2026-05-26T17:16:27.765314+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 180,
+                  "recorded_at": "2026-05-26T17:16:27.767360+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 181,
+                  "recorded_at": "2026-05-26T17:16:27.768321+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 182,
+                  "recorded_at": "2026-05-26T17:16:27.768832+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 183,
+                  "recorded_at": "2026-05-26T17:16:27.770872+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 184,
+                  "recorded_at": "2026-05-26T17:16:27.771875+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 185,
+                  "recorded_at": "2026-05-26T17:16:27.772872+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 186,
+                  "recorded_at": "2026-05-26T17:16:27.773837+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 187,
+                  "recorded_at": "2026-05-26T17:16:27.775367+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 188,
+                  "recorded_at": "2026-05-26T17:16:27.777414+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 189,
+                  "recorded_at": "2026-05-26T17:16:27.779410+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 190,
+                  "recorded_at": "2026-05-26T17:16:27.781386+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 191,
+                  "recorded_at": "2026-05-26T17:16:27.782414+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 192,
+                  "recorded_at": "2026-05-26T17:16:27.784412+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 193,
+                  "recorded_at": "2026-05-26T17:16:27.786932+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 194,
+                  "recorded_at": "2026-05-26T17:16:27.787927+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 195,
+                  "recorded_at": "2026-05-26T17:16:27.790935+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 196,
+                  "recorded_at": "2026-05-26T17:16:27.791949+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 197,
+                  "recorded_at": "2026-05-26T17:16:27.792955+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 198,
+                  "recorded_at": "2026-05-26T17:16:27.793930+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 199,
+                  "recorded_at": "2026-05-26T17:16:27.795474+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 200,
+                  "recorded_at": "2026-05-26T17:16:27.796488+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 201,
+                  "recorded_at": "2026-05-26T17:16:27.798528+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 202,
+                  "recorded_at": "2026-05-26T17:16:27.800520+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 203,
+                  "recorded_at": "2026-05-26T17:16:27.802521+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 204,
+                  "recorded_at": "2026-05-26T17:16:27.804495+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 205,
+                  "recorded_at": "2026-05-26T17:16:27.806069+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 206,
+                  "recorded_at": "2026-05-26T17:16:27.807089+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 207,
+                  "recorded_at": "2026-05-26T17:16:27.809085+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 208,
+                  "recorded_at": "2026-05-26T17:16:27.812075+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 209,
+                  "recorded_at": "2026-05-26T17:16:27.812075+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 210,
+                  "recorded_at": "2026-05-26T17:16:27.813073+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 211,
+                  "recorded_at": "2026-05-26T17:16:27.814087+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 212,
+                  "recorded_at": "2026-05-26T17:16:27.816674+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 213,
+                  "recorded_at": "2026-05-26T17:16:27.818216+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 214,
+                  "recorded_at": "2026-05-26T17:16:27.819236+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 215,
+                  "recorded_at": "2026-05-26T17:16:27.819745+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 216,
+                  "recorded_at": "2026-05-26T17:16:27.820785+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 217,
+                  "recorded_at": "2026-05-26T17:16:27.821762+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 218,
+                  "recorded_at": "2026-05-26T17:16:27.822785+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 219,
+                  "recorded_at": "2026-05-26T17:16:27.823766+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 220,
+                  "recorded_at": "2026-05-26T17:16:27.826304+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 221,
+                  "recorded_at": "2026-05-26T17:16:27.827347+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 222,
+                  "recorded_at": "2026-05-26T17:16:27.828338+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 223,
+                  "recorded_at": "2026-05-26T17:16:27.830339+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 224,
+                  "recorded_at": "2026-05-26T17:16:27.831340+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 225,
+                  "recorded_at": "2026-05-26T17:16:27.834335+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 226,
+                  "recorded_at": "2026-05-26T17:16:27.835853+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 227,
+                  "recorded_at": "2026-05-26T17:16:27.835853+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 228,
+                  "recorded_at": "2026-05-26T17:16:27.838405+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 229,
+                  "recorded_at": "2026-05-26T17:16:27.839397+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 230,
+                  "recorded_at": "2026-05-26T17:16:27.840393+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 231,
+                  "recorded_at": "2026-05-26T17:16:27.840393+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 232,
+                  "recorded_at": "2026-05-26T17:16:27.842425+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 233,
+                  "recorded_at": "2026-05-26T17:16:27.843426+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 234,
+                  "recorded_at": "2026-05-26T17:16:27.843426+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 235,
+                  "recorded_at": "2026-05-26T17:16:27.845402+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 236,
+                  "recorded_at": "2026-05-26T17:16:27.847968+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 237,
+                  "recorded_at": "2026-05-26T17:16:27.848973+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 238,
+                  "recorded_at": "2026-05-26T17:16:27.852945+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 239,
+                  "recorded_at": "2026-05-26T17:16:27.853967+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 240,
+                  "recorded_at": "2026-05-26T17:16:27.855506+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 241,
+                  "recorded_at": "2026-05-26T17:16:27.857549+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 242,
+                  "recorded_at": "2026-05-26T17:16:27.858552+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 243,
+                  "recorded_at": "2026-05-26T17:16:27.859534+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 244,
+                  "recorded_at": "2026-05-26T17:16:27.860529+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 245,
+                  "recorded_at": "2026-05-26T17:16:27.861560+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 246,
+                  "recorded_at": "2026-05-26T17:16:27.863548+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 247,
+                  "recorded_at": "2026-05-26T17:16:27.864547+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 248,
+                  "recorded_at": "2026-05-26T17:16:27.868626+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 249,
+                  "recorded_at": "2026-05-26T17:16:27.869649+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 250,
+                  "recorded_at": "2026-05-26T17:16:27.871670+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 251,
+                  "recorded_at": "2026-05-26T17:16:27.873650+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 252,
+                  "recorded_at": "2026-05-26T17:16:27.877179+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 253,
+                  "recorded_at": "2026-05-26T17:16:27.878199+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 254,
+                  "recorded_at": "2026-05-26T17:16:27.882200+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 255,
+                  "recorded_at": "2026-05-26T17:16:27.884195+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 256,
+                  "recorded_at": "2026-05-26T17:16:27.884195+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 257,
+                  "recorded_at": "2026-05-26T17:16:27.885822+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 258,
+                  "recorded_at": "2026-05-26T17:16:27.887857+00:00",
+                  "status": "ok"
+                },
+                {
+                  "index": 259,
+                  "recorded_at": "2026-05-26T17:16:27.889945+00:00",
+                  "status": "ok"
+                }
+              ],
+              "provider_latency": [
+                {
+                  "average_latency_ms": 4540.17,
+                  "failure_count": 0,
+                  "provider": "gemini",
+                  "recorded_at": "2026-05-26T17:12:45.612973+00:00",
+                  "success_rate": 100.0
+                },
+                {
+                  "average_latency_ms": 1405.9,
+                  "failure_count": 0,
+                  "provider": "groq",
+                  "recorded_at": "2026-05-26T17:12:45.612973+00:00",
+                  "success_rate": 100.0
+                },
+                {
+                  "average_latency_ms": 4540.17,
+                  "failure_count": 0,
+                  "provider": "gemini",
+                  "recorded_at": "2026-05-26T17:13:45.688502+00:00",
+                  "success_rate": 100.0
+                },
+                {
+                  "average_latency_ms": 1405.9,
+                  "failure_count": 0,
+                  "provider": "groq",
+                  "recorded_at": "2026-05-26T17:13:45.690236+00:00",
+                  "success_rate": 100.0
+                },
+                {
+                  "average_latency_ms": 4540.17,
+                  "failure_count": 0,
+                  "provider": "gemini",
+                  "recorded_at": "2026-05-26T17:14:45.863157+00:00",
+                  "success_rate": 100.0
+                },
+                {
+                  "average_latency_ms": 1405.9,
+                  "failure_count": 0,
+                  "provider": "groq",
+                  "recorded_at": "2026-05-26T17:14:45.866149+00:00",
+                  "success_rate": 100.0
+                },
+                {
+                  "average_latency_ms": 4540.17,
+                  "failure_count": 0,
+                  "provider": "gemini",
+                  "recorded_at": "2026-05-26T17:15:59.062194+00:00",
+                  "success_rate": 100.0
+                },
+                {
+                  "average_latency_ms": 1405.9,
+                  "failure_count": 0,
+                  "provider": "groq",
+                  "recorded_at": "2026-05-26T17:15:59.064157+00:00",
+                  "success_rate": 100.0
+                }
+              ],
+              "queue_depth": [
+                {
+                  "active_executions": 0,
+                  "queue_anomalies": 0,
+                  "queue_depth": 0,
+                  "recorded_at": "2026-05-26T17:12:45.010589+00:00"
+                },
+                {
+                  "active_executions": 0,
+                  "queue_anomalies": 0,
+                  "queue_depth": 0,
+                  "recorded_at": "2026-05-26T17:13:45.070112+00:00"
+                },
+                {
+                  "active_executions": 0,
+                  "queue_anomalies": 0,
+                  "queue_depth": 0,
+                  "recorded_at": "2026-05-26T17:14:45.237943+00:00"
+                },
+                {
+                  "active_executions": 0,
+                  "queue_anomalies": 0,
+                  "queue_depth": 0,
+                  "recorded_at": "2026-05-26T17:15:58.462000+00:00"
+                }
+              ],
+              "request_execution": [
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 175,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 119398,
+                  "recorded_at": "2026-05-26T17:15:43.507590+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 158,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 119604,
+                  "recorded_at": "2026-05-26T17:15:43.699794+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 155,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 119718,
+                  "recorded_at": "2026-05-26T17:15:43.829908+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 172,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 119910,
+                  "recorded_at": "2026-05-26T17:15:44.034841+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 147,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 120038,
+                  "recorded_at": "2026-05-26T17:15:44.142656+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 133,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 120234,
+                  "recorded_at": "2026-05-26T17:15:44.357588+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 118,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 120331,
+                  "recorded_at": "2026-05-26T17:15:44.397743+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 209,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 120547,
+                  "recorded_at": "2026-05-26T17:15:44.669329+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 76,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 120590,
+                  "recorded_at": "2026-05-26T17:15:44.704710+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 132,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 120856,
+                  "recorded_at": "2026-05-26T17:15:44.916579+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 138,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 120894,
+                  "recorded_at": "2026-05-26T17:15:44.981467+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 146,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 121111,
+                  "recorded_at": "2026-05-26T17:15:45.242934+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 212,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 121176,
+                  "recorded_at": "2026-05-26T17:15:45.303255+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 178,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 121427,
+                  "recorded_at": "2026-05-26T17:15:45.574545+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 164,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 121490,
+                  "recorded_at": "2026-05-26T17:15:45.604161+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 132,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 121752,
+                  "recorded_at": "2026-05-26T17:15:45.853528+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 211,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 121782,
+                  "recorded_at": "2026-05-26T17:15:46.018928+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 140,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 122028,
+                  "recorded_at": "2026-05-26T17:15:46.304073+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 409,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 122196,
+                  "recorded_at": "2026-05-26T17:15:46.642133+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 233,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 122538,
+                  "recorded_at": "2026-05-26T17:15:46.794489+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 180,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 122819,
+                  "recorded_at": "2026-05-26T17:15:47.292460+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 564,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 122964,
+                  "recorded_at": "2026-05-26T17:15:47.512917+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 182,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 123459,
+                  "recorded_at": "2026-05-26T17:15:47.663907+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 118,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 123683,
+                  "recorded_at": "2026-05-26T17:15:47.775286+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 158,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 123831,
+                  "recorded_at": "2026-05-26T17:15:47.933122+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 206,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 123941,
+                  "recorded_at": "2026-05-26T17:15:48.147667+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 153,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 124102,
+                  "recorded_at": "2026-05-26T17:15:48.254810+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 132,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 124308,
+                  "recorded_at": "2026-05-26T17:15:48.357463+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 271,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 124416,
+                  "recorded_at": "2026-05-26T17:15:48.637815+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 193,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 124516,
+                  "recorded_at": "2026-05-26T17:15:48.679860+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 110,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 124835,
+                  "recorded_at": "2026-05-26T17:15:48.946524+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 187,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 124794,
+                  "recorded_at": "2026-05-26T17:15:48.999814+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 141,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 125158,
+                  "recorded_at": "2026-05-26T17:15:49.278888+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 248,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 125101,
+                  "recorded_at": "2026-05-26T17:15:49.318010+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 164,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 125432,
+                  "recorded_at": "2026-05-26T17:15:49.581957+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 155,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 125475,
+                  "recorded_at": "2026-05-26T17:15:49.617532+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 157,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 125736,
+                  "recorded_at": "2026-05-26T17:15:49.889204+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 217,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 125770,
+                  "recorded_at": "2026-05-26T17:15:50.070198+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 131,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 126036,
+                  "recorded_at": "2026-05-26T17:15:50.196372+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 156,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 126208,
+                  "recorded_at": "2026-05-26T17:15:50.374219+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 136,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 126328,
+                  "recorded_at": "2026-05-26T17:15:50.474636+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 142,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 126500,
+                  "recorded_at": "2026-05-26T17:15:50.613491+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 172,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 126622,
+                  "recorded_at": "2026-05-26T17:15:50.852966+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 154,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 126737,
+                  "recorded_at": "2026-05-26T17:15:50.915111+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 58,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 127038,
+                  "recorded_at": "2026-05-26T17:15:51.093057+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 297,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 126974,
+                  "recorded_at": "2026-05-26T17:15:51.269025+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 144,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 127220,
+                  "recorded_at": "2026-05-26T17:15:51.413635+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 111,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 127386,
+                  "recorded_at": "2026-05-26T17:15:51.473163+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 206,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 127588,
+                  "recorded_at": "2026-05-26T17:15:51.897790+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 345,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 127530,
+                  "recorded_at": "2026-05-26T17:15:51.994565+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 207,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 128018,
+                  "recorded_at": "2026-05-26T17:15:52.248944+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 152,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 128110,
+                  "recorded_at": "2026-05-26T17:15:52.285237+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 136,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 128365,
+                  "recorded_at": "2026-05-26T17:15:52.631351+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 162,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 128398,
+                  "recorded_at": "2026-05-26T17:15:52.761797+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 240,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 128745,
+                  "recorded_at": "2026-05-26T17:15:53.026716+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 152,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 128869,
+                  "recorded_at": "2026-05-26T17:15:53.075118+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 159,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 129140,
+                  "recorded_at": "2026-05-26T17:15:53.348424+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 158,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 129183,
+                  "recorded_at": "2026-05-26T17:15:53.383104+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 172,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 129456,
+                  "recorded_at": "2026-05-26T17:15:53.676733+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 176,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 129492,
+                  "recorded_at": "2026-05-26T17:15:53.719592+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 157,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 129817,
+                  "recorded_at": "2026-05-26T17:15:53.956919+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 157,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 129779,
+                  "recorded_at": "2026-05-26T17:15:54.021625+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 104,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 130056,
+                  "recorded_at": "2026-05-26T17:15:54.223477+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 141,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 130129,
+                  "recorded_at": "2026-05-26T17:15:54.371591+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 191,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 130325,
+                  "recorded_at": "2026-05-26T17:15:54.572294+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 171,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 130464,
+                  "recorded_at": "2026-05-26T17:15:54.688478+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 169,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 130661,
+                  "recorded_at": "2026-05-26T17:15:54.882515+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 167,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 130779,
+                  "recorded_at": "2026-05-26T17:15:55.034531+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 118,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 130966,
+                  "recorded_at": "2026-05-26T17:15:55.157401+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 154,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 131117,
+                  "recorded_at": "2026-05-26T17:15:55.391307+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 294,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 131246,
+                  "recorded_at": "2026-05-26T17:15:55.757555+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 298,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 131470,
+                  "recorded_at": "2026-05-26T17:15:55.974528+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 174,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 131832,
+                  "recorded_at": "2026-05-26T17:15:56.069986+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 248,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 132048,
+                  "recorded_at": "2026-05-26T17:15:56.408716+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 194,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 132132,
+                  "recorded_at": "2026-05-26T17:15:56.431372+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 192,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 132471,
+                  "recorded_at": "2026-05-26T17:15:56.757186+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 200,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 132499,
+                  "recorded_at": "2026-05-26T17:15:56.839861+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 122,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 132812,
+                  "recorded_at": "2026-05-26T17:15:57.048251+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 170,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 132893,
+                  "recorded_at": "2026-05-26T17:15:57.147067+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 209,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 133104,
+                  "recorded_at": "2026-05-26T17:15:57.363991+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 155,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 133204,
+                  "recorded_at": "2026-05-26T17:15:57.437548+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 214,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 133417,
+                  "recorded_at": "2026-05-26T17:15:57.679328+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 165,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 133493,
+                  "recorded_at": "2026-05-26T17:15:57.771717+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 123,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 133742,
+                  "recorded_at": "2026-05-26T17:15:57.910386+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 189,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 133820,
+                  "recorded_at": "2026-05-26T17:15:58.270548+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 147,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 133958,
+                  "recorded_at": "2026-05-26T17:15:58.533394+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 367,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 134318,
+                  "recorded_at": "2026-05-26T17:15:58.852429+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 173,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 134572,
+                  "recorded_at": "2026-05-26T17:15:58.914362+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 196,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 134889,
+                  "recorded_at": "2026-05-26T17:15:59.132043+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 161,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 134957,
+                  "recorded_at": "2026-05-26T17:15:59.226454+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 145,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 135170,
+                  "recorded_at": "2026-05-26T17:15:59.430373+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 175,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 135260,
+                  "recorded_at": "2026-05-26T17:15:59.547854+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 151,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 135463,
+                  "recorded_at": "2026-05-26T17:15:59.737079+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 164,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 135581,
+                  "recorded_at": "2026-05-26T17:15:59.792596+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 61,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 135823,
+                  "recorded_at": "2026-05-26T17:16:00.040210+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 182,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 135767,
+                  "recorded_at": "2026-05-26T17:16:00.108176+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 203,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 136068,
+                  "recorded_at": "2026-05-26T17:16:00.301872+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 238,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 136137,
+                  "recorded_at": "2026-05-26T17:16:00.497247+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 152,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 136338,
+                  "recorded_at": "2026-05-26T17:16:00.558472+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 119,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 136525,
+                  "recorded_at": "2026-05-26T17:16:00.696097+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 167,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 136590,
+                  "recorded_at": "2026-05-26T17:16:00.860471+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 90,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 136735,
+                  "recorded_at": "2026-05-26T17:16:00.952998+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 117,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 136881,
+                  "recorded_at": "2026-05-26T17:16:01.057518+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 195,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 136972,
+                  "recorded_at": "2026-05-26T17:16:01.338138+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 325,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 137084,
+                  "recorded_at": "2026-05-26T17:16:01.509550+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 129,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 137358,
+                  "recorded_at": "2026-05-26T17:16:01.627364+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 157,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 137518,
+                  "recorded_at": "2026-05-26T17:16:01.814014+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 158,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 137632,
+                  "recorded_at": "2026-05-26T17:16:01.923709+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 160,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 137820,
+                  "recorded_at": "2026-05-26T17:16:02.134079+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 175,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 137936,
+                  "recorded_at": "2026-05-26T17:16:02.190907+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 184,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 138135,
+                  "recorded_at": "2026-05-26T17:16:02.427492+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 156,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 138189,
+                  "recorded_at": "2026-05-26T17:16:02.483388+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 160,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 138425,
+                  "recorded_at": "2026-05-26T17:16:02.694099+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 143,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 138482,
+                  "recorded_at": "2026-05-26T17:16:02.773881+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 180,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 138686,
+                  "recorded_at": "2026-05-26T17:16:02.974049+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 170,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 138762,
+                  "recorded_at": "2026-05-26T17:16:03.053056+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 223,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 138970,
+                  "recorded_at": "2026-05-26T17:16:03.407925+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 187,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 139053,
+                  "recorded_at": "2026-05-26T17:16:03.441007+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 63,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 1,
+                  "recorded_at": "2026-05-26T17:16:27.471353+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 179,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 2,
+                  "recorded_at": "2026-05-26T17:16:35.477139+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 215,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 4,
+                  "recorded_at": "2026-05-26T17:16:35.568725+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 194,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 332,
+                  "recorded_at": "2026-05-26T17:16:35.754133+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 75,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 414,
+                  "recorded_at": "2026-05-26T17:16:35.789394+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 111,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 600,
+                  "recorded_at": "2026-05-26T17:16:35.978849+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 234,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 635,
+                  "recorded_at": "2026-05-26T17:16:36.137514+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 501,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 840,
+                  "recorded_at": "2026-05-26T17:16:36.721652+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 483,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 976,
+                  "recorded_at": "2026-05-26T17:16:36.767138+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 90,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 1572,
+                  "recorded_at": "2026-05-26T17:16:37.086664+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 224,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 1602,
+                  "recorded_at": "2026-05-26T17:16:37.125393+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 117,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 1919,
+                  "recorded_at": "2026-05-26T17:16:37.285515+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 98,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 1961,
+                  "recorded_at": "2026-05-26T17:16:37.404048+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 86,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 2115,
+                  "recorded_at": "2026-05-26T17:16:37.492401+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 165,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 2318,
+                  "recorded_at": "2026-05-26T17:16:37.757736+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 162,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 2232,
+                  "recorded_at": "2026-05-26T17:16:37.788474+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 152,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 2581,
+                  "recorded_at": "2026-05-26T17:16:38.031753+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 206,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 2612,
+                  "recorded_at": "2026-05-26T17:16:38.094972+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 146,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 2864,
+                  "recorded_at": "2026-05-26T17:16:38.351280+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 291,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 2921,
+                  "recorded_at": "2026-05-26T17:16:38.502817+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 194,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 3170,
+                  "recorded_at": "2026-05-26T17:16:38.739140+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 106,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 3321,
+                  "recorded_at": "2026-05-26T17:16:38.792588+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 154,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 3611,
+                  "recorded_at": "2026-05-26T17:16:39.041523+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 165,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 3554,
+                  "recorded_at": "2026-05-26T17:16:39.089444+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 167,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 3855,
+                  "recorded_at": "2026-05-26T17:16:39.328557+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 168,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 3909,
+                  "recorded_at": "2026-05-26T17:16:39.386942+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 167,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 4140,
+                  "recorded_at": "2026-05-26T17:16:39.717253+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 168,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 4204,
+                  "recorded_at": "2026-05-26T17:16:39.765353+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 99,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 4534,
+                  "recorded_at": "2026-05-26T17:16:39.992290+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 147,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 4577,
+                  "recorded_at": "2026-05-26T17:16:40.021581+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 92,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 4796,
+                  "recorded_at": "2026-05-26T17:16:40.294993+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 97,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 5097,
+                  "recorded_at": "2026-05-26T17:16:40.490012+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 340,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 4825,
+                  "recorded_at": "2026-05-26T17:16:40.526357+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 177,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 5290,
+                  "recorded_at": "2026-05-26T17:16:40.757114+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 201,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 5330,
+                  "recorded_at": "2026-05-26T17:16:40.932944+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 83,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 5556,
+                  "recorded_at": "2026-05-26T17:16:40.972713+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 158,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 5732,
+                  "recorded_at": "2026-05-26T17:16:41.225395+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 158,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 5777,
+                  "recorded_at": "2026-05-26T17:16:41.256049+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 135,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 6020,
+                  "recorded_at": "2026-05-26T17:16:41.492921+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 145,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 6051,
+                  "recorded_at": "2026-05-26T17:16:41.521851+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 118,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 6287,
+                  "recorded_at": "2026-05-26T17:16:41.767726+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 212,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 6315,
+                  "recorded_at": "2026-05-26T17:16:42.144131+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 471,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 6573,
+                  "recorded_at": "2026-05-26T17:16:42.450767+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 164,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 6936,
+                  "recorded_at": "2026-05-26T17:16:42.493924+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 136,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 7286,
+                  "recorded_at": "2026-05-26T17:16:42.705840+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 148,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 7243,
+                  "recorded_at": "2026-05-26T17:16:42.817803+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 60,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 7492,
+                  "recorded_at": "2026-05-26T17:16:42.849110+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 172,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 7606,
+                  "recorded_at": "2026-05-26T17:16:43.119788+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 175,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 7641,
+                  "recorded_at": "2026-05-26T17:16:43.150719+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 142,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 7906,
+                  "recorded_at": "2026-05-26T17:16:43.379087+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 125,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 7954,
+                  "recorded_at": "2026-05-26T17:16:43.405123+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 92,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 8187,
+                  "recorded_at": "2026-05-26T17:16:43.591919+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 182,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 8161,
+                  "recorded_at": "2026-05-26T17:16:43.655587+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 105,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 8376,
+                  "recorded_at": "2026-05-26T17:16:43.816154+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 122,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 8441,
+                  "recorded_at": "2026-05-26T17:16:43.873476+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 109,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 8596,
+                  "recorded_at": "2026-05-26T17:16:44.058767+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 148,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 8645,
+                  "recorded_at": "2026-05-26T17:16:44.201469+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 102,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 8829,
+                  "recorded_at": "2026-05-26T17:16:44.350188+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 105,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 8974,
+                  "recorded_at": "2026-05-26T17:16:44.498378+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 88,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 9123,
+                  "recorded_at": "2026-05-26T17:16:44.528733+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 102,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 9265,
+                  "recorded_at": "2026-05-26T17:16:44.725017+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 164,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 9297,
+                  "recorded_at": "2026-05-26T17:16:44.784266+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 96,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 9547,
+                  "recorded_at": "2026-05-26T17:16:44.997748+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 187,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 9490,
+                  "recorded_at": "2026-05-26T17:16:45.063129+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 195,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 9824,
+                  "recorded_at": "2026-05-26T17:16:45.359152+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 397,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 9766,
+                  "recorded_at": "2026-05-26T17:16:45.550386+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 170,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 10117,
+                  "recorded_at": "2026-05-26T17:16:45.643229+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 163,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 10323,
+                  "recorded_at": "2026-05-26T17:16:45.824178+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 254,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 10412,
+                  "recorded_at": "2026-05-26T17:16:46.005744+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 123,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 10580,
+                  "recorded_at": "2026-05-26T17:16:46.065915+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 139,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 10765,
+                  "recorded_at": "2026-05-26T17:16:46.370519+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 189,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 10824,
+                  "recorded_at": "2026-05-26T17:16:46.402801+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 125,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 11127,
+                  "recorded_at": "2026-05-26T17:16:46.643493+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 134,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 11155,
+                  "recorded_at": "2026-05-26T17:16:46.945661+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 126,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 11398,
+                  "recorded_at": "2026-05-26T17:16:47.104026+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 251,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 11697,
+                  "recorded_at": "2026-05-26T17:16:47.327079+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 98,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 12077,
+                  "recorded_at": "2026-05-26T17:16:47.482975+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 121,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 11855,
+                  "recorded_at": "2026-05-26T17:16:47.510100+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 110,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 12231,
+                  "recorded_at": "2026-05-26T17:16:47.695836+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 153,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 12254,
+                  "recorded_at": "2026-05-26T17:16:47.758321+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 176,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 12501,
+                  "recorded_at": "2026-05-26T17:16:47.993690+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 103,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 12733,
+                  "recorded_at": "2026-05-26T17:16:48.150775+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 350,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 12443,
+                  "recorded_at": "2026-05-26T17:16:48.228846+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 140,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 12891,
+                  "recorded_at": "2026-05-26T17:16:48.411032+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 137,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 12981,
+                  "recorded_at": "2026-05-26T17:16:48.506979+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 120,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 13250,
+                  "recorded_at": "2026-05-26T17:16:48.703312+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 194,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 13147,
+                  "recorded_at": "2026-05-26T17:16:48.759972+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 153,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 13436,
+                  "recorded_at": "2026-05-26T17:16:49.020781+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 155,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 13506,
+                  "recorded_at": "2026-05-26T17:16:49.066847+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 140,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 13746,
+                  "recorded_at": "2026-05-26T17:16:49.253658+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 118,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 13800,
+                  "recorded_at": "2026-05-26T17:16:49.416448+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 103,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 13972,
+                  "recorded_at": "2026-05-26T17:16:49.531701+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 116,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 14257,
+                  "recorded_at": "2026-05-26T17:16:49.717163+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 162,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 14135,
+                  "recorded_at": "2026-05-26T17:16:49.768189+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 141,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 14483,
+                  "recorded_at": "2026-05-26T17:16:50.090558+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 231,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 14436,
+                  "recorded_at": "2026-05-26T17:16:50.163376+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 113,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 14810,
+                  "recorded_at": "2026-05-26T17:16:50.370257+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 167,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 14878,
+                  "recorded_at": "2026-05-26T17:16:50.491546+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 147,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 15082,
+                  "recorded_at": "2026-05-26T17:16:50.659023+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 112,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 15208,
+                  "recorded_at": "2026-05-26T17:16:50.699088+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 101,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 15410,
+                  "recorded_at": "2026-05-26T17:16:50.989293+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 207,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 15381,
+                  "recorded_at": "2026-05-26T17:16:51.043994+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 148,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 15706,
+                  "recorded_at": "2026-05-26T17:16:51.230705+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 197,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 15773,
+                  "recorded_at": "2026-05-26T17:16:51.322394+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 97,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 16029,
+                  "recorded_at": "2026-05-26T17:16:51.551150+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 255,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 15939,
+                  "recorded_at": "2026-05-26T17:16:51.617921+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 149,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 16323,
+                  "recorded_at": "2026-05-26T17:16:52.220262+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 167,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 16256,
+                  "recorded_at": "2026-05-26T17:16:52.249948+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 99,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 16957,
+                  "recorded_at": "2026-05-26T17:16:52.443769+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 169,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 16926,
+                  "recorded_at": "2026-05-26T17:16:52.555338+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 141,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 17253,
+                  "recorded_at": "2026-05-26T17:16:52.807717+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 187,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 17147,
+                  "recorded_at": "2026-05-26T17:16:52.839295+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 163,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 17538,
+                  "recorded_at": "2026-05-26T17:16:53.120836+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 144,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 17505,
+                  "recorded_at": "2026-05-26T17:16:53.166749+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 173,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 17821,
+                  "recorded_at": "2026-05-26T17:16:53.405731+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 171,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 17861,
+                  "recorded_at": "2026-05-26T17:16:53.539453+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 174,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 18097,
+                  "recorded_at": "2026-05-26T17:16:53.793370+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 197,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 18229,
+                  "recorded_at": "2026-05-26T17:16:53.907186+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 143,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 18484,
+                  "recorded_at": "2026-05-26T17:16:54.064555+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 219,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 18600,
+                  "recorded_at": "2026-05-26T17:16:54.282099+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 179,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 18750,
+                  "recorded_at": "2026-05-26T17:16:54.386611+00:00",
+                  "status": "completed"
+                },
+                {
+                  "cache_hit": false,
+                  "execution_duration_ms": 137,
+                  "fallback_used": false,
+                  "provider": "groq",
+                  "queue_wait_ms": 18832,
+                  "recorded_at": "2026-05-26T17:16:54.472197+00:00",
+                  "status": "completed"
+                }
+              ]
+            },
+            "integrity": {
+              "recent_violations": [
+                {
+                  "attempted_state": "queued",
+                  "created_at": "2026-05-26T17:16:35.456177+00:00",
+                  "current_state": "queued",
+                  "detail": null,
+                  "reason": "duplicate_queue_insertion",
+                  "request_id": 243
+                },
+                {
+                  "attempted_state": "scheduled",
+                  "created_at": "2026-05-26T17:16:19.244698+00:00",
+                  "current_state": "executing",
+                  "detail": "phase6 invalid transition",
+                  "reason": "invalid_transition:executing->scheduled",
+                  "request_id": 4
+                },
+                {
+                  "attempted_state": "completed",
+                  "created_at": "2026-05-26T17:16:19.207643+00:00",
+                  "current_state": "cancelled",
+                  "detail": "phase6 invalid transition",
+                  "reason": "terminal_state:cancelled",
+                  "request_id": 3
+                },
+                {
+                  "attempted_state": "executing",
+                  "created_at": "2026-05-26T17:16:19.173949+00:00",
+                  "current_state": "failed",
+                  "detail": "phase6 invalid transition",
+                  "reason": "terminal_state:failed",
+                  "request_id": 2
+                },
+                {
+                  "attempted_state": "queued",
+                  "created_at": "2026-05-26T17:16:19.142624+00:00",
+                  "current_state": "completed",
+                  "detail": "phase6 invalid transition",
+                  "reason": "terminal_state:completed",
+                  "request_id": 1
+                }
+              ],
+              "violation_count": 5
+            },
+            "queue": {
+              "active_executions": 0,
+              "average_execution_duration_ms": 162.96,
+              "average_queue_wait_ms": 9384.73,
+              "completed_count": 122,
+              "failed_count": 0,
+              "queue_anomalies": 1,
+              "queue_depth": 0
+            },
+            "recovery": {
+              "recent_actions": [
+                {
+                  "action": "stale_execution_cleanup",
+                  "created_at": "2026-05-26T17:16:19.438172+00:00",
+                  "reason": "execution exceeded stale threshold",
+                  "request_id": 6
+                },
+                {
+                  "action": "stale_execution_cleanup",
+                  "created_at": "2026-05-26T17:16:19.398809+00:00",
+                  "reason": "execution exceeded stale threshold",
+                  "request_id": 5
+                }
+              ],
+              "recovery_action_count": 2
+            },
+            "status": "degraded"
+          }
+        },
+        "real_health": [
+          true,
+          null
+        ]
+      },
+      "recommended_fix": null,
+      "risk_flags": [],
+      "status": "PASS",
+      "suspected_root_cause": null,
+      "test_name": "TEST 9 - Database Degradation Test"
+    },
+    {
+      "exact_code_region_involved": null,
+      "exact_file_involved": null,
+      "execution_steps": [],
+      "logs_errors": [],
+      "objective": "Skipped by --skip-heavy.",
+      "observed_behavior": {},
+      "recommended_fix": null,
+      "risk_flags": [],
+      "status": "SKIPPED",
+      "suspected_root_cause": null,
+      "test_name": "TEST 10 - Long Runtime Stability Test"
+    }
+  ]
+}

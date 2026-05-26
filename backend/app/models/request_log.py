@@ -30,14 +30,18 @@ class RequestLog(Base):
         nullable=False,
         server_default="completed",
     )
+    received_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     queued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     execution_started_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
     )
+    provider_response_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     queue_wait_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     execution_duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    cache_hit: Mapped[bool] = mapped_column(Boolean, server_default="false")
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
