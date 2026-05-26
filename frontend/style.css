@@ -1,0 +1,407 @@
+:root {
+  color-scheme: dark;
+  --bg: #090b10;
+  --panel: #111722;
+  --panel-strong: #151d2b;
+  --border: #263244;
+  --text: #eef3fb;
+  --muted: #9aa8ba;
+  --accent: #27d3a2;
+  --accent-strong: #5af0c6;
+  --danger: #ff6b7a;
+  --warning: #e6bd54;
+  --shadow: rgba(0, 0, 0, 0.35);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    linear-gradient(180deg, rgba(39, 211, 162, 0.08), transparent 260px),
+    var(--bg);
+  color: var(--text);
+}
+
+button,
+textarea {
+  font: inherit;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr) 320px;
+  gap: 24px;
+  width: min(1440px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 40px 0;
+}
+
+.console-panel,
+.session-panel,
+.analytics-panel {
+  border: 1px solid var(--border);
+  background: rgba(17, 23, 34, 0.92);
+  box-shadow: 0 24px 70px var(--shadow);
+}
+
+.console-panel {
+  padding: 28px;
+}
+
+.analytics-panel {
+  align-self: start;
+  padding: 22px;
+}
+
+.session-panel {
+  align-self: start;
+  padding: 18px;
+}
+
+.panel-header,
+.section-title-row,
+.form-actions,
+.session-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--accent-strong);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+h1,
+h2 {
+  margin: 0;
+  letter-spacing: 0;
+}
+
+h1 {
+  font-size: clamp(2.2rem, 4vw, 4rem);
+  line-height: 1;
+}
+
+h2 {
+  font-size: 1rem;
+}
+
+.status-pill,
+.request-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+  color: var(--muted);
+  padding: 7px 10px;
+  font-size: 0.86rem;
+  white-space: nowrap;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 16px rgba(39, 211, 162, 0.9);
+}
+
+.prompt-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 34px;
+}
+
+label {
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+textarea {
+  width: 100%;
+  min-height: 220px;
+  resize: vertical;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  outline: none;
+  background: #070a0f;
+  color: var(--text);
+  padding: 16px;
+  line-height: 1.5;
+}
+
+textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(39, 211, 162, 0.16);
+}
+
+button {
+  min-height: 42px;
+  border: 0;
+  background: var(--accent);
+  color: #03110d;
+  cursor: pointer;
+  font-weight: 800;
+  padding: 0 18px;
+}
+
+button:hover {
+  background: var(--accent-strong);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.session-header button {
+  min-height: 34px;
+  padding: 0 12px;
+}
+
+.active-session {
+  display: grid;
+  gap: 6px;
+  margin: 18px 0;
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+  padding: 12px;
+}
+
+.active-session span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.active-session strong {
+  overflow-wrap: anywhere;
+  font-size: 0.95rem;
+}
+
+.session-list {
+  display: grid;
+  gap: 8px;
+  max-height: 240px;
+  overflow: auto;
+}
+
+.session-item {
+  width: 100%;
+  min-height: auto;
+  border: 1px solid var(--border);
+  background: #0b1018;
+  color: var(--text);
+  text-align: left;
+  padding: 10px;
+}
+
+.session-item:hover,
+.session-item.active {
+  border-color: var(--accent);
+  background: #102019;
+  color: var(--accent-strong);
+}
+
+.form-message {
+  min-height: 20px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.form-message.error {
+  color: var(--danger);
+}
+
+.response-section {
+  display: grid;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.inference-metadata {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.inference-metadata div {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+  padding: 12px;
+}
+
+.inference-metadata span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.inference-metadata strong {
+  overflow-wrap: anywhere;
+  font-size: 0.92rem;
+}
+
+.response-output {
+  min-height: 150px;
+  margin: 0;
+  border: 1px solid var(--border);
+  background: #070a0f;
+  color: #d9e4f0;
+  overflow: auto;
+  padding: 16px;
+  white-space: pre-wrap;
+}
+
+.analytics-panel h2 {
+  margin-bottom: 18px;
+}
+
+.metric-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.metric-card {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+  padding: 14px;
+}
+
+.metric-label {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.metric-card strong {
+  font-size: 1.35rem;
+  overflow-wrap: anywhere;
+}
+
+.ops-section {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.ops-section h3 {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  letter-spacing: 0;
+}
+
+.ops-list {
+  display: grid;
+  gap: 8px;
+}
+
+.ops-row {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--border);
+  background: #0b1018;
+  padding: 10px;
+}
+
+.ops-row strong {
+  font-size: 0.92rem;
+}
+
+.ops-row span,
+.empty-state {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.health-ok {
+  color: var(--accent-strong);
+}
+
+.health-warn {
+  color: var(--warning);
+}
+
+.request-state.loading {
+  color: var(--warning);
+}
+
+.request-state.success {
+  color: var(--accent-strong);
+}
+
+.request-state.error {
+  color: var(--danger);
+}
+
+/* Phase 5 — operational intelligence styles */
+
+.health-critical {
+  color: var(--danger);
+}
+
+.ops-row .health-ok,
+.ops-row .health-warn,
+.ops-row .health-critical {
+  font-weight: 700;
+}
+
+.metric-card strong.health-ok {
+  color: var(--accent-strong);
+}
+
+.metric-card strong.health-warn {
+  color: var(--warning);
+}
+
+.metric-card strong.health-critical {
+  color: var(--danger);
+}
+
+@media (max-width: 860px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+    padding: 20px 0;
+  }
+
+  .console-panel,
+  .session-panel,
+  .analytics-panel {
+    padding: 18px;
+  }
+
+  .panel-header,
+  .form-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .status-pill,
+  button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .inference-metadata {
+    grid-template-columns: 1fr;
+  }
+}

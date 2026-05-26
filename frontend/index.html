@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Qorvexis Infrastructure Console</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <aside class="session-panel">
+        <div class="session-header">
+          <h2>Sessions</h2>
+          <button id="newSessionButton" type="button">New</button>
+        </div>
+        <div class="active-session">
+          <span>Active context</span>
+          <strong id="currentSessionName">Starting...</strong>
+        </div>
+        <div id="sessionList" class="session-list">
+          <span class="empty-state">No sessions loaded.</span>
+        </div>
+        <section class="ops-section">
+          <h3>Session memory</h3>
+          <div id="sessionHistory" class="ops-list">
+            <span class="empty-state">No requests in this session yet.</span>
+          </div>
+        </section>
+      </aside>
+
+      <section class="console-panel">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Infrastructure orchestration</p>
+            <h1>Qorvexis</h1>
+          </div>
+          <div class="status-pill">
+            <span class="status-dot"></span>
+            Operational Session
+          </div>
+        </div>
+
+        <form id="promptForm" class="prompt-form">
+          <label for="promptInput">Workload prompt</label>
+          <textarea
+            id="promptInput"
+            name="prompt"
+            rows="8"
+            placeholder="Describe the AI workload or infrastructure request to send through the Qorvexis control plane..."
+            required
+          ></textarea>
+          <div class="form-actions">
+            <p id="formMessage" class="form-message" aria-live="polite"></p>
+            <button id="submitButton" type="submit">Submit request</button>
+          </div>
+        </form>
+
+        <section class="response-section" aria-live="polite">
+          <div class="section-title-row">
+            <h2>Backend response</h2>
+            <span id="requestState" class="request-state">Idle</span>
+          </div>
+          <div class="inference-metadata">
+            <div>
+              <span>Request ID</span>
+              <strong id="requestId">--</strong>
+            </div>
+            <div>
+              <span>Provider</span>
+              <strong id="providerUsed">--</strong>
+            </div>
+            <div>
+              <span>Model</span>
+              <strong id="modelUsed">--</strong>
+            </div>
+            <div>
+              <span>Inference latency</span>
+              <strong id="inferenceLatency">--</strong>
+            </div>
+            <div>
+              <span>Category</span>
+              <strong id="requestCategory">--</strong>
+            </div>
+            <div>
+              <span>Fallback</span>
+              <strong id="fallbackUsed">--</strong>
+            </div>
+            <div>
+              <span>Priority</span>
+              <strong id="requestPriority">--</strong>
+            </div>
+            <div>
+              <span>Lifecycle</span>
+              <strong id="lifecycleState">--</strong>
+            </div>
+            <div>
+              <span>Queue wait</span>
+              <strong id="queueWait">--</strong>
+            </div>
+            <div>
+              <span>Execution</span>
+              <strong id="executionDuration">--</strong>
+            </div>
+            <div>
+              <span>Cache hit</span>
+              <strong id="cacheHit">--</strong>
+            </div>
+            <div>
+              <span>Deduplicated</span>
+              <strong id="deduplicated">--</strong>
+            </div>
+            <div>
+              <span>Est. cost</span>
+              <strong id="estimatedCost">--</strong>
+            </div>
+          </div>
+          <pre id="responseOutput" class="response-output">No request submitted yet.</pre>
+        </section>
+      </section>
+
+      <aside class="analytics-panel">
+        <h2>Operations snapshot</h2>
+        <div class="metric-grid">
+          <div class="metric-card">
+            <span class="metric-label">Requests sent</span>
+            <strong id="requestsSent">0</strong>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Successful writes</span>
+            <strong id="successfulWrites">0</strong>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Last latency</span>
+            <strong id="lastLatency">--</strong>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Last provider</span>
+            <strong id="lastProvider">--</strong>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">API target</span>
+            <strong id="apiTarget">Local</strong>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Backend total</span>
+            <strong id="backendTotal">--</strong>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Backend failures</span>
+            <strong id="backendFailures">--</strong>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Avg latency</span>
+            <strong id="averageLatency">--</strong>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Fallback usage</span>
+            <strong id="fallbackUsage">--</strong>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Queue depth</span>
+            <strong id="queueDepth">--</strong>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Active executions</span>
+            <strong id="activeExecutions">--</strong>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Requests/min</span>
+            <strong id="requestsPerMinute">--</strong>
+          </div>
+        </div>
+
+        <section class="ops-section">
+          <h3>Orchestration health</h3>
+          <div id="orchestrationHealth" class="ops-list">
+            <span class="empty-state">No health data yet.</span>
+          </div>
+        </section>
+        <section class="ops-section">
+          <h3>Cache metrics</h3>
+          <div class="metric-grid" id="cacheMetrics">
+            <div class="metric-card">
+              <span class="metric-label">Hit ratio</span>
+              <strong id="cacheHitRatio">--</strong>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Hits / Misses</span>
+              <strong id="cacheHitsMisses">--</strong>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Entries</span>
+              <strong id="cacheEntries">--</strong>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Evictions</span>
+              <strong id="cacheEvictions">--</strong>
+            </div>
+          </div>
+        </section>
+        <section class="ops-section">
+          <h3>Provider scores</h3>
+          <div id="providerScores" class="ops-list">
+            <span class="empty-state">No scoring data yet.</span>
+          </div>
+        </section>
+        <section class="ops-section">
+          <h3>Provider cooldowns</h3>
+          <div id="providerCooldowns" class="ops-list">
+            <span class="empty-state">No cooldown data yet.</span>
+          </div>
+        </section>
+        <section class="ops-section">
+          <h3>Deduplication</h3>
+          <div class="metric-grid" id="dedupMetrics">
+            <div class="metric-card">
+              <span class="metric-label">Duplicates detected</span>
+              <strong id="dedupCount">--</strong>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Dedup rate</span>
+              <strong id="dedupRate">--</strong>
+            </div>
+          </div>
+        </section>
+        <section class="ops-section">
+          <h3>Cost estimation</h3>
+          <div class="metric-grid" id="costMetrics">
+            <div class="metric-card">
+              <span class="metric-label">Total est. cost</span>
+              <strong id="totalCost">--</strong>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Avg cost/request</span>
+              <strong id="avgCostPerRequest">--</strong>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Total tokens</span>
+              <strong id="totalTokens">--</strong>
+            </div>
+          </div>
+        </section>
+        <section class="ops-section">
+          <h3>Provider capacity</h3>
+          <div id="providerCapacity" class="ops-list">
+            <span class="empty-state">No capacity metrics yet.</span>
+          </div>
+        </section>
+        <section class="ops-section">
+          <h3>Lifecycle states</h3>
+          <div id="lifecycleBreakdown" class="ops-list">
+            <span class="empty-state">No lifecycle metrics yet.</span>
+          </div>
+        </section>
+        <section class="ops-section">
+          <h3>Provider health</h3>
+          <div id="providerHealth" class="ops-list">
+            <span class="empty-state">No provider metrics yet.</span>
+          </div>
+        </section>
+        <section class="ops-section">
+          <h3>Request categories</h3>
+          <div id="categoryBreakdown" class="ops-list">
+            <span class="empty-state">No category metrics yet.</span>
+          </div>
+        </section>
+      </aside>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
