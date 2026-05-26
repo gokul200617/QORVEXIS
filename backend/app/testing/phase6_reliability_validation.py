@@ -289,7 +289,7 @@ def enqueue_requests(session_id: str, count: int, concurrent_writers: int = 16) 
 
         def submit_prepared(item: tuple[int, str]) -> None:
             request_id, prompt = item
-            future = queue_manager.enqueue(request_id, prompt, "normal", [])
+            future = queue_manager.enqueue(request_id, prompt, "normal", [], session_id=session_id)
             with futures_lock:
                 futures.append(future)
 
@@ -304,7 +304,7 @@ def enqueue_requests(session_id: str, count: int, concurrent_writers: int = 16) 
             db = db_session()
             try:
                 request = create_queued_request(db, session_id=session_id, prompt=prompt, priority="normal")
-                future = queue_manager.enqueue(request.id, prompt, "normal", [])
+                future = queue_manager.enqueue(request.id, prompt, "normal", [], session_id=session_id)
             finally:
                 db.close()
         except Exception as exc:
@@ -585,8 +585,8 @@ def test_concurrency_safety() -> dict[str, Any]:
         thread.start()
         futures = enqueue_requests(session.id, 120, concurrent_writers=32)
         duplicate_request = create_queued_request(db, session.id, f"{TEST_PREFIX} duplicate queue insertion python", "normal")
-        first = queue_manager.enqueue(duplicate_request.id, duplicate_request.prompt, "normal", [])
-        second = queue_manager.enqueue(duplicate_request.id, duplicate_request.prompt, "normal", [])
+        first = queue_manager.enqueue(duplicate_request.id, duplicate_request.prompt, "normal", [], session_id=session.id)
+        second = queue_manager.enqueue(duplicate_request.id, duplicate_request.prompt, "normal", [], session_id=session.id)
         futures.extend([first, second])
         completed, failed_count, errors = wait_for_futures(futures, 90)
         stop.set()
@@ -694,7 +694,7 @@ def test_long_runtime_stability() -> dict[str, Any]:
                 provider_behavior.fail_next(random.choice(["gemini", "groq"]), 1)
             prompt = f"{TEST_PREFIX} long runtime churn {index % 25} python cache activity"
             request = create_queued_request(db, session.id, prompt, "normal")
-            futures.append(queue_manager.enqueue(request.id, prompt, "normal", []))
+            futures.append(queue_manager.enqueue(request.id, prompt, "normal", [], session_id=session.id))
             if index % 20 == 0:
                 _current, usage = tracemalloc.get_traced_memory()
                 samples.append({"t": round(time.monotonic(), 2), "queue": queue_manager.snapshot(), "threads": threading.active_count(), "maxrss": usage})

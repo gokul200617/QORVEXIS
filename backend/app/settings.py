@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     historical_metrics_file: str = "operational_history.jsonl"
     stale_execution_seconds: int = 300
     request_timeout_seconds: int = 120
+    queue_max_depth: int = 2500
+    queue_enqueue_timeout_seconds: int = 2
+    queue_drain_timeout_seconds: int = 300
 
     model_config = SettingsConfigDict(
         env_file=".env",

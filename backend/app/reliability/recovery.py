@@ -60,10 +60,12 @@ def sweep_stale_executions() -> int:
     from app.database.session import SessionLocal
     from app.models.request_log import RequestLog
     from app.orchestration.lifecycle import FAILED, transition_request
+    from app.reliability.reconciliation import reconciliation_registry
     from app.services.request_service import mark_request_failed
 
     db = SessionLocal()
     recovered = 0
+    recovered_ids: set[int] = set()
     try:
         cutoff = datetime.now(timezone.utc) - timedelta(seconds=settings.stale_execution_seconds)
         rows = (
@@ -88,7 +90,9 @@ def sweep_stale_executions() -> int:
             )
             transition_request(db, row.id, FAILED, detail="stale_execution_recovery")
             recovery_registry.record("stale_execution_cleanup", "execution exceeded stale threshold", row.id)
+            recovered_ids.add(row.id)
             recovered += 1
+        reconciliation_registry.reconcile_terminal_requests(recovered_ids, source="recovery_sweeper")
     finally:
         db.close()
     return recovered

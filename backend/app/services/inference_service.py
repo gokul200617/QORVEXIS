@@ -233,6 +233,8 @@ def run_inference(
                 provider.name,
             )
         except ProviderError as fallback_exc:
+            provider_scorer.record_failure(fallback_provider_name)
+            failover_manager.record_failure(fallback_provider_name)
             logger.error(
                 "inference.failover.failure original_provider=%s fallback_provider=%s error=%s",
                 provider_name,

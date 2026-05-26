@@ -25,6 +25,7 @@ def simulate_burst(
                 prompt=prompt,
                 priority=priority,
                 memory_context=[],
+                session_id=session_id,
             )
         )
 
@@ -45,4 +46,3 @@ def simulate_burst(
         "failed": failed,
         "queue": queue_manager.snapshot(),
     }
-

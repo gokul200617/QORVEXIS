@@ -54,6 +54,7 @@ def _ask_traced(payload: AskRequest, db: Session) -> AskResponse:
             prompt=payload.prompt,
             priority=priority,
             memory_context=memory_context,
+            session_id=active_session.id,
         )
         execution = future.result(timeout=settings.request_timeout_seconds)
         inference_result = execution["inference_result"]

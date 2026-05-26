@@ -310,6 +310,7 @@ def get_dedup_metrics() -> dict:
 def get_reliability_metrics(db: Session) -> dict:
     from app.observability.diagnostics import detect_stale_requests
     from app.reliability.integrity import integrity_registry
+    from app.reliability.reconciliation import reconciliation_registry
     from app.reliability.recovery import recovery_registry
     from app.services.historical_metrics import historical_metrics
     from app.services.session_service import get_session_memory_metrics
@@ -319,6 +320,7 @@ def get_reliability_metrics(db: Session) -> dict:
         "orchestration_health": get_orchestration_health(),
         "integrity": integrity_registry.snapshot(),
         "recovery": recovery_registry.snapshot(),
+        "reconciliation": reconciliation_registry.snapshot(),
         "queue": get_queue_metrics(),
         "stale_requests": detect_stale_requests(db),
         "session_memory": get_session_memory_metrics(db),
@@ -342,9 +344,11 @@ def get_lifecycle_integrity_metrics(db: Session) -> dict:
 def get_recovery_metrics(db: Session) -> dict:
     from app.observability.diagnostics import detect_stale_requests
     from app.reliability.recovery import recovery_registry
+    from app.reliability.reconciliation import reconciliation_registry
 
     return {
         **recovery_registry.snapshot(),
+        "reconciliation": reconciliation_registry.snapshot(),
         "stale_requests": detect_stale_requests(db),
         "queue": queue_manager.diagnostics(db),
     }

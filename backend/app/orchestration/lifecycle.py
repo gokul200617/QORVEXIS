@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.models.request_lifecycle_event import RequestLifecycleEvent
 from app.models.request_log import RequestLog
-from app.observability.logger import log_event
+from app.observability.logger import log_event, orchestration_payload
 from app.reliability.lifecycle_guard import validate_lifecycle_transition
 
 logger = logging.getLogger("qorvexis.lifecycle")
@@ -54,5 +54,21 @@ def transition_request(
     )
     db.add(request)
     db.commit()
-    log_event(logger, "info", "lifecycle.transition", request_id=request_id, lifecycle_state=state, detail=detail)
+    log_event(
+        logger,
+        "info",
+        "lifecycle.transition",
+        **orchestration_payload(
+            request_id=request_id,
+            session_id=request.session_id,
+            provider=request.provider_used or request.original_provider,
+            lifecycle_state=state,
+            queue_wait_ms=request.queue_wait_ms,
+            execution_duration_ms=request.execution_duration_ms,
+            fallback_used=request.fallback_used,
+            cache_hit=request.cache_hit,
+            reconciliation_state="none",
+            detail=detail,
+        ),
+    )
     return True

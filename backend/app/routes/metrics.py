@@ -108,6 +108,7 @@ def metrics_reliability(db: Session = Depends(get_db)) -> dict:
     except SQLAlchemyError as exc:
         from app.orchestration.queue_manager import queue_manager
         from app.reliability.integrity import integrity_registry
+        from app.reliability.reconciliation import reconciliation_registry
         from app.reliability.recovery import recovery_registry
         from app.services.historical_metrics import historical_metrics
 
@@ -116,6 +117,7 @@ def metrics_reliability(db: Session = Depends(get_db)) -> dict:
             "database_error": str(exc.__cause__ or exc),
             "integrity": integrity_registry.snapshot(),
             "recovery": recovery_registry.snapshot(),
+            "reconciliation": reconciliation_registry.snapshot(),
             "queue": queue_manager.snapshot(),
             "history": historical_metrics.snapshot(),
         }
@@ -144,12 +146,14 @@ def metrics_recovery(db: Session = Depends(get_db)) -> dict:
         return get_recovery_metrics(db)
     except SQLAlchemyError as exc:
         from app.orchestration.queue_manager import queue_manager
+        from app.reliability.reconciliation import reconciliation_registry
         from app.reliability.recovery import recovery_registry
 
         return {
             "status": "degraded",
             "database_error": str(exc.__cause__ or exc),
             **recovery_registry.snapshot(),
+            "reconciliation": reconciliation_registry.snapshot(),
             "stale_requests": [],
             "queue": queue_manager.diagnostics(),
         }
@@ -162,6 +166,7 @@ def metrics_diagnostics(db: Session = Depends(get_db)) -> dict:
     except SQLAlchemyError as exc:
         from app.orchestration.queue_manager import queue_manager
         from app.reliability.integrity import integrity_registry
+        from app.reliability.reconciliation import reconciliation_registry
         from app.services.response_cache import response_cache
         from app.services.failover_manager import failover_manager
 
@@ -170,6 +175,7 @@ def metrics_diagnostics(db: Session = Depends(get_db)) -> dict:
             "database_error": str(exc.__cause__ or exc),
             "queue": queue_manager.diagnostics(),
             "integrity": integrity_registry.snapshot(),
+            "reconciliation": reconciliation_registry.snapshot(),
             "cache": response_cache.snapshot(),
             "provider_cooldowns": failover_manager.snapshot(),
             "timelines": [],
