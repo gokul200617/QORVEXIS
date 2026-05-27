@@ -86,7 +86,24 @@ def metrics_orchestration_health() -> dict:
 
 @router.get("/costs")
 def metrics_costs() -> dict:
-    return get_cost_metrics()
+    base = get_cost_metrics()
+    try:
+        from app.services.dedup_tracker import dedup_tracker
+        from app.services.infrastructure_analytics_service import compute_heuristic_cost_estimate
+        from app.services.response_cache import response_cache
+
+        base["infrastructure_cost_heuristics"] = compute_heuristic_cost_estimate(
+            cost_summary=base,
+            dedup_summary=dedup_tracker.snapshot(),
+            cache_summary=response_cache.snapshot(),
+        )
+    except Exception as exc:
+        import logging
+        logging.getLogger("qorvexis.routes.metrics").warning(
+            "metrics_costs.heuristics_failed error=%s", exc
+        )
+        base["infrastructure_cost_heuristics"] = {"label": "heuristic unavailable"}
+    return base
 
 
 @router.get("/failover")

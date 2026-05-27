@@ -1,313 +1,723 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Qorvexis Infrastructure Console</title>
-    <link rel="stylesheet" href="style.css" />
-  </head>
-  <body>
-    <main class="app-shell">
-      <aside class="session-panel">
-        <div class="session-header">
-          <h2>Sessions</h2>
-          <button id="newSessionButton" type="button">New</button>
-        </div>
-        <div class="active-session">
-          <span>Active context</span>
-          <strong id="currentSessionName">Starting...</strong>
-        </div>
-        <div id="sessionList" class="session-list">
-          <span class="empty-state">No sessions loaded.</span>
-        </div>
-        <section class="ops-section">
-          <h3>Session memory</h3>
-          <div id="sessionHistory" class="ops-list">
-            <span class="empty-state">No requests in this session yet.</span>
-          </div>
-        </section>
-      </aside>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Qorvexis — Infrastructure Intelligence Platform</title>
+  <meta name="description" content="Qorvexis — AI infrastructure orchestration, telemetry, and cost optimization intelligence platform." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="theme-dark">
+  <a class="skip-link" href="#view-overview">Skip to main content</a>
 
-      <section class="console-panel">
-        <div class="panel-header">
+  <!-- ── Sidebar ───────────────────────────────────────────────────── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <svg class="logo-mark" width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <rect width="28" height="28" rx="6" fill="var(--accent)"/>
+        <path d="M7 14h6M15 9l6 5-6 5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="logo-text">Qorvexis</span>
+    </div>
+
+    <nav class="sidebar-nav" aria-label="Main navigation">
+      <a href="#" class="nav-item active" data-section="overview" id="nav-overview">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+          <rect x="3" y="3" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="11" y="3" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="3" y="11" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="11" y="11" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+        <span>Overview</span>
+      </a>
+      <a href="#" class="nav-item" data-section="infrastructure" id="nav-infrastructure">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+          <rect x="2" y="5" width="16" height="4" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="2" y="11" width="16" height="4" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="5.5" cy="7" r="1" fill="currentColor"/>
+          <circle cx="5.5" cy="13" r="1" fill="currentColor"/>
+        </svg>
+        <span>Infrastructure</span>
+      </a>
+      <a href="#" class="nav-item" data-section="gpu" id="nav-gpu">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+          <rect x="2" y="6" width="16" height="8" rx="2" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M6 10h8M6 13v1.5M10 13v1.5M14 13v1.5M6 7V5.5M10 7V5.5M14 7V5.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+        <span>GPU Analytics</span>
+      </a>
+      <a href="#" class="nav-item" data-section="workloads" id="nav-workloads">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+          <circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M10 6v4l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <span>Workloads</span>
+      </a>
+      <a href="#" class="nav-item" data-section="queue" id="nav-queue">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+          <path d="M3 6h14M3 10h10M3 14h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <span>Queue Intelligence</span>
+      </a>
+      <a href="#" class="nav-item" data-section="cost" id="nav-cost">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+          <circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M10 6.5v1M10 12.5v1M8 9a2 2 0 0 1 4 0c0 2-4 2-4 4h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+        <span>Cost Intelligence</span>
+      </a>
+      <a href="#" class="nav-item" data-section="optimization" id="nav-optimization">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+          <path d="M10 3l1.8 5.4H17l-4.5 3.3 1.7 5.3L10 14l-4.2 3 1.7-5.3L3 8.4h5.2L10 3z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+        </svg>
+        <span>Optimization</span>
+      </a>
+      <a href="#" class="nav-item" data-section="providers" id="nav-providers">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+          <circle cx="10" cy="5" r="2" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="5" cy="15" r="2" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="15" cy="15" r="2" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M10 7v3.5M10 10.5l-3.2 2.7M10 10.5l3.2 2.7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+        <span>Providers</span>
+      </a>
+      <a href="#" class="nav-item" data-section="telemetry" id="nav-telemetry">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+          <polyline points="3,14 7,8 10,11 13,6 17,10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>Telemetry</span>
+      </a>
+      <a href="#" class="nav-item" data-section="sessions" id="nav-sessions">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+          <rect x="3" y="3" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M7 10h6M7 13h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          <circle cx="10" cy="7.5" r="1.2" fill="currentColor"/>
+        </svg>
+        <span>Sessions</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="env-badge">
+        <span class="env-dot"></span>
+        <span id="apiTarget">localhost</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Main Shell ─────────────────────────────────────────────────── -->
+  <div class="app-shell" id="appShell">
+
+    <!-- ── Top Navbar ─────────────────────────────────────────────── -->
+    <header class="topbar">
+      <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <path d="M2 4.5h14M2 9h14M2 13.5h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+      </button>
+
+      <div class="topbar-search">
+        <svg class="search-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.4"/>
+          <path d="M10.5 10.5L13 13" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+        <input type="text" id="globalSearch" placeholder="Search workloads, providers, sessions…" autocomplete="off" />
+      </div>
+
+      <div class="topbar-right">
+        <div class="system-health-pill" id="systemHealthPill">
+          <span class="health-pulse"></span>
+          <span id="systemHealthLabel">Operational</span>
+        </div>
+
+        <button class="icon-btn" id="themeToggle" aria-label="Toggle theme" title="Toggle dark / light mode">
+          <svg class="icon-sun" width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <circle cx="9" cy="9" r="3.5" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M9 2v1.5M9 14.5V16M2 9h1.5M14.5 9H16M4 4l1 1M13 13l1 1M4 14l1-1M13 5l1-1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <svg class="icon-moon" width="18" height="18" viewBox="0 0 18 18" fill="none" style="display:none">
+            <path d="M14.5 9.9A6.5 6.5 0 0 1 8.1 3.5 6.5 6.5 0 1 0 14.5 9.9z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+          </svg>
+        </button>
+
+        <div class="avatar" aria-label="User profile">Q</div>
+      </div>
+    </header>
+
+    <!-- ── Page Content ───────────────────────────────────────────── -->
+    <main class="page-content">
+
+      <!-- ════════════════════════════════════════════════════════════
+           SECTION: Overview
+      ═══════════════════════════════════════════════════════════════ -->
+      <section class="view active" id="view-overview">
+        <div class="view-header">
           <div>
-            <p class="eyebrow">Infrastructure orchestration</p>
-            <h1>Qorvexis</h1>
+            <p class="view-eyebrow">Infrastructure Intelligence</p>
+            <h1 class="view-title">Overview</h1>
           </div>
-          <div class="status-pill">
-            <span class="status-dot"></span>
-            Operational Session
+          <div class="view-meta">
+            <span class="last-refresh-label">Refreshing every 30s</span>
+            <button class="btn-secondary" id="manualRefreshBtn">Refresh now</button>
           </div>
         </div>
 
-        <form id="promptForm" class="prompt-form">
-          <label for="promptInput">Workload prompt</label>
-          <textarea
-            id="promptInput"
-            name="prompt"
-            rows="8"
-            placeholder="Describe the AI workload or infrastructure request to send through the Qorvexis control plane..."
-            required
-          ></textarea>
-          <div class="form-actions">
-            <p id="formMessage" class="form-message" aria-live="polite"></p>
-            <button id="submitButton" type="submit">Submit request</button>
+        <!-- Hero KPI Row -->
+        <div class="kpi-row">
+          <div class="kpi-card kpi-savings">
+            <div class="kpi-label">Est. Monthly Savings</div>
+            <div class="kpi-value" id="kpiMonthlySavings">--</div>
+            <div class="kpi-sub">from cache + dedup</div>
+            <div class="kpi-badge positive" id="kpiSavingsBadge">heuristic</div>
           </div>
-        </form>
+          <div class="kpi-card kpi-gpu">
+            <div class="kpi-label">GPU Utilization</div>
+            <div class="kpi-value" id="kpiGpuUtil">N/A</div>
+            <div class="kpi-sub" id="kpiGpuSub">pynvml not installed</div>
+            <div class="kpi-badge neutral" id="kpiGpuBadge">inactive</div>
+          </div>
+          <div class="kpi-card kpi-workloads">
+            <div class="kpi-label">Active Workloads</div>
+            <div class="kpi-value" id="kpiActiveWorkloads">0</div>
+            <div class="kpi-sub" id="kpiQueueSub">0 queued</div>
+            <div class="kpi-badge" id="kpiWorkloadsBadge">live</div>
+          </div>
+          <div class="kpi-card kpi-success">
+            <div class="kpi-label">Success Rate</div>
+            <div class="kpi-value" id="kpiSuccessRate">--%</div>
+            <div class="kpi-sub" id="kpiTotalRequests">0 total requests</div>
+            <div class="kpi-badge positive" id="kpiSuccessBadge">all time</div>
+          </div>
+        </div>
 
-        <section class="response-section" aria-live="polite">
-          <div class="section-title-row">
-            <h2>Backend response</h2>
-            <span id="requestState" class="request-state">Idle</span>
-          </div>
-          <div class="inference-metadata">
-            <div>
-              <span>Request ID</span>
-              <strong id="requestId">--</strong>
+        <!-- Overview Grids -->
+        <div class="dash-grid dash-grid-3">
+          <!-- Orchestration Health -->
+          <div class="panel panel-span-2">
+            <div class="panel-header">
+              <h2 class="panel-title">Orchestration Health</h2>
+              <span class="panel-badge" id="orchHealthScore">--/100</span>
             </div>
-            <div>
-              <span>Provider</span>
-              <strong id="providerUsed">--</strong>
-            </div>
-            <div>
-              <span>Model</span>
-              <strong id="modelUsed">--</strong>
-            </div>
-            <div>
-              <span>Inference latency</span>
-              <strong id="inferenceLatency">--</strong>
-            </div>
-            <div>
-              <span>Category</span>
-              <strong id="requestCategory">--</strong>
-            </div>
-            <div>
-              <span>Fallback</span>
-              <strong id="fallbackUsed">--</strong>
-            </div>
-            <div>
-              <span>Priority</span>
-              <strong id="requestPriority">--</strong>
-            </div>
-            <div>
-              <span>Lifecycle</span>
-              <strong id="lifecycleState">--</strong>
-            </div>
-            <div>
-              <span>Queue wait</span>
-              <strong id="queueWait">--</strong>
-            </div>
-            <div>
-              <span>Execution</span>
-              <strong id="executionDuration">--</strong>
-            </div>
-            <div>
-              <span>Cache hit</span>
-              <strong id="cacheHit">--</strong>
-            </div>
-            <div>
-              <span>Deduplicated</span>
-              <strong id="deduplicated">--</strong>
-            </div>
-            <div>
-              <span>Est. cost</span>
-              <strong id="estimatedCost">--</strong>
+            <div id="orchestrationHealth" class="data-list">
+              <div class="data-skeleton"></div>
             </div>
           </div>
-          <pre id="responseOutput" class="response-output">No request submitted yet.</pre>
-        </section>
+
+          <!-- Quick Stats -->
+          <div class="panel">
+            <div class="panel-header">
+              <h2 class="panel-title">Throughput</h2>
+            </div>
+            <div class="stat-stack">
+              <div class="stat-row">
+                <span class="stat-label">Requests / min</span>
+                <span class="stat-value" id="requestsPerMinute">--</span>
+              </div>
+              <div class="stat-row">
+                <span class="stat-label">Avg queue wait</span>
+                <span class="stat-value" id="avgQueueWait">--</span>
+              </div>
+              <div class="stat-row">
+                <span class="stat-label">Avg execution</span>
+                <span class="stat-value" id="avgExecution">--</span>
+              </div>
+              <div class="stat-row">
+                <span class="stat-label">Completed</span>
+                <span class="stat-value" id="completedRequests">--</span>
+              </div>
+              <div class="stat-row">
+                <span class="stat-label">Fallback rate</span>
+                <span class="stat-value" id="fallbackUsage">--</span>
+              </div>
+              <div class="stat-row">
+                <span class="stat-label">Avg latency</span>
+                <span class="stat-value" id="averageLatency">--</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Workload Submission -->
+        <div class="panel workload-panel">
+          <div class="panel-header">
+            <h2 class="panel-title">Submit Workload</h2>
+            <div class="header-row-right">
+              <span id="requestState" class="state-chip">Idle</span>
+            </div>
+          </div>
+          <form id="promptForm" class="workload-form">
+            <div class="form-field">
+              <label for="promptInput" class="form-label">Workload prompt</label>
+              <textarea
+                id="promptInput"
+                name="prompt"
+                rows="5"
+                placeholder="Describe the AI workload or infrastructure request to route through the Qorvexis control plane…"
+                required
+              ></textarea>
+            </div>
+            <div class="form-actions">
+              <p id="formMessage" class="form-message" aria-live="polite"></p>
+              <button id="submitButton" type="submit" class="btn-primary">Submit workload</button>
+            </div>
+          </form>
+
+          <!-- Response -->
+          <div class="response-panel" aria-live="polite">
+            <div class="response-meta-grid" id="responseMetaGrid">
+              <div class="meta-cell">
+                <span class="meta-label">Request ID</span>
+                <strong id="requestId">--</strong>
+              </div>
+              <div class="meta-cell">
+                <span class="meta-label">Provider</span>
+                <strong id="providerUsed">--</strong>
+              </div>
+              <div class="meta-cell">
+                <span class="meta-label">Model</span>
+                <strong id="modelUsed">--</strong>
+              </div>
+              <div class="meta-cell">
+                <span class="meta-label">Latency</span>
+                <strong id="inferenceLatency">--</strong>
+              </div>
+              <div class="meta-cell">
+                <span class="meta-label">Category</span>
+                <strong id="requestCategory">--</strong>
+              </div>
+              <div class="meta-cell">
+                <span class="meta-label">Fallback</span>
+                <strong id="fallbackUsed">--</strong>
+              </div>
+              <div class="meta-cell">
+                <span class="meta-label">Priority</span>
+                <strong id="requestPriority">--</strong>
+              </div>
+              <div class="meta-cell">
+                <span class="meta-label">Lifecycle</span>
+                <strong id="lifecycleState">--</strong>
+              </div>
+              <div class="meta-cell">
+                <span class="meta-label">Queue wait</span>
+                <strong id="queueWait">--</strong>
+              </div>
+              <div class="meta-cell">
+                <span class="meta-label">Execution</span>
+                <strong id="executionDuration">--</strong>
+              </div>
+              <div class="meta-cell">
+                <span class="meta-label">Cache hit</span>
+                <strong id="cacheHit">--</strong>
+              </div>
+              <div class="meta-cell">
+                <span class="meta-label">Deduplicated</span>
+                <strong id="deduplicated">--</strong>
+              </div>
+              <div class="meta-cell">
+                <span class="meta-label">Est. cost</span>
+                <strong id="estimatedCost">--</strong>
+              </div>
+              <div class="meta-cell">
+                <span class="meta-label">Last client latency</span>
+                <strong id="lastLatency">--</strong>
+              </div>
+            </div>
+            <pre id="responseOutput" class="response-output">No workload submitted yet.</pre>
+          </div>
+        </div>
+
       </section>
 
-      <aside class="analytics-panel">
-        <h2>Operations snapshot</h2>
-        <div class="metric-grid">
-          <div class="metric-card">
-            <span class="metric-label">Requests sent</span>
-            <strong id="requestsSent">0</strong>
+      <!-- ════════════════════════════════════════════════════════════
+           SECTION: Infrastructure
+      ═══════════════════════════════════════════════════════════════ -->
+      <section class="view" id="view-infrastructure">
+        <div class="view-header">
+          <div>
+            <p class="view-eyebrow">Local System</p>
+            <h1 class="view-title">Infrastructure Telemetry</h1>
           </div>
-          <div class="metric-card">
-            <span class="metric-label">Successful writes</span>
-            <strong id="successfulWrites">0</strong>
+          <span class="last-refresh-label" id="infraLastUpdatedLabel"></span>
+        </div>
+
+        <div class="dash-grid dash-grid-4">
+          <div class="panel kpi-mini">
+            <div class="kpi-mini-label">CPU Utilization</div>
+            <div class="kpi-mini-value" id="infraCpu">--</div>
+            <div class="progress-bar-track"><div class="progress-bar-fill" id="infraCpuBar" style="width:0%"></div></div>
+            <div class="kpi-mini-pressure" id="infraCpuPressure">—</div>
           </div>
-          <div class="metric-card">
-            <span class="metric-label">Last latency</span>
-            <strong id="lastLatency">--</strong>
+          <div class="panel kpi-mini">
+            <div class="kpi-mini-label">Memory Utilization</div>
+            <div class="kpi-mini-value" id="infraMemory">--</div>
+            <div class="progress-bar-track"><div class="progress-bar-fill" id="infraMemoryBar" style="width:0%"></div></div>
+            <div class="kpi-mini-pressure" id="infraMemoryPressure">—</div>
           </div>
-          <div class="metric-card">
-            <span class="metric-label">Last provider</span>
-            <strong id="lastProvider">--</strong>
+          <div class="panel kpi-mini">
+            <div class="kpi-mini-label">Disk Utilization</div>
+            <div class="kpi-mini-value" id="infraDisk">--</div>
+            <div class="progress-bar-track"><div class="progress-bar-fill" id="infraDiskBar" style="width:0%"></div></div>
+            <div class="kpi-mini-pressure" id="infraDiskPressure">—</div>
           </div>
-          <div class="metric-card">
-            <span class="metric-label">API target</span>
-            <strong id="apiTarget">Local</strong>
-          </div>
-          <div class="metric-card">
-            <span class="metric-label">Backend total</span>
-            <strong id="backendTotal">--</strong>
-          </div>
-          <div class="metric-card">
-            <span class="metric-label">Backend failures</span>
-            <strong id="backendFailures">--</strong>
-          </div>
-          <div class="metric-card">
-            <span class="metric-label">Avg latency</span>
-            <strong id="averageLatency">--</strong>
-          </div>
-          <div class="metric-card">
-            <span class="metric-label">Fallback usage</span>
-            <strong id="fallbackUsage">--</strong>
-          </div>
-          <div class="metric-card">
-            <span class="metric-label">Queue depth</span>
-            <strong id="queueDepth">--</strong>
-          </div>
-          <div class="metric-card">
-            <span class="metric-label">Active executions</span>
-            <strong id="activeExecutions">--</strong>
-          </div>
-          <div class="metric-card">
-            <span class="metric-label">Requests/min</span>
-            <strong id="requestsPerMinute">--</strong>
+          <div class="panel kpi-mini">
+            <div class="kpi-mini-label">Platform</div>
+            <div class="kpi-mini-value" id="infraPlatform">--</div>
+            <div class="kpi-mini-pressure" id="infraPythonVersion">—</div>
           </div>
         </div>
 
-        <section class="ops-section">
-          <h3>Orchestration health</h3>
-          <div id="orchestrationHealth" class="ops-list">
-            <span class="empty-state">No health data yet.</span>
-          </div>
-        </section>
-        <section class="ops-section">
-          <h3>Reliability integrity</h3>
-          <div class="metric-grid">
-            <div class="metric-card">
-              <span class="metric-label">Violations</span>
-              <strong id="integrityViolations">--</strong>
+        <div class="dash-grid dash-grid-2">
+          <div class="panel">
+            <div class="panel-header">
+              <h2 class="panel-title">GPU Telemetry</h2>
+              <span class="panel-badge" id="gpuAvailBadge">checking…</span>
             </div>
-            <div class="metric-card">
-              <span class="metric-label">Recovery actions</span>
-              <strong id="recoveryActions">--</strong>
-            </div>
-            <div class="metric-card">
-              <span class="metric-label">Queue anomalies</span>
-              <strong id="queueAnomalies">--</strong>
+            <div id="gpuMetricsContent" class="data-list">
+              <div class="data-skeleton"></div>
             </div>
           </div>
-        </section>
-        <section class="ops-section">
-          <h3>Active queue inspector</h3>
-          <div id="activeQueueInspector" class="ops-list">
-            <span class="empty-state">No queue diagnostics yet.</span>
-          </div>
-        </section>
-        <section class="ops-section">
-          <h3>Execution timelines</h3>
-          <div id="executionTimelines" class="ops-list">
-            <span class="empty-state">No timelines yet.</span>
-          </div>
-        </section>
-        <section class="ops-section">
-          <h3>Lifecycle violations</h3>
-          <div id="violationLog" class="ops-list">
-            <span class="empty-state">No violations recorded.</span>
-          </div>
-        </section>
-        <section class="ops-section">
-          <h3>Scheduler decisions</h3>
-          <div id="schedulerDecisions" class="ops-list">
-            <span class="empty-state">No scheduler transitions yet.</span>
-          </div>
-        </section>
-        <section class="ops-section">
-          <h3>Cache metrics</h3>
-          <div class="metric-grid" id="cacheMetrics">
-            <div class="metric-card">
-              <span class="metric-label">Hit ratio</span>
-              <strong id="cacheHitRatio">--</strong>
+          <div class="panel">
+            <div class="panel-header">
+              <h2 class="panel-title">System Snapshot</h2>
             </div>
-            <div class="metric-card">
-              <span class="metric-label">Hits / Misses</span>
-              <strong id="cacheHitsMisses">--</strong>
-            </div>
-            <div class="metric-card">
-              <span class="metric-label">Entries</span>
-              <strong id="cacheEntries">--</strong>
-            </div>
-            <div class="metric-card">
-              <span class="metric-label">Evictions</span>
-              <strong id="cacheEvictions">--</strong>
+            <div class="stat-stack" id="infraExtraStats">
+              <div class="stat-row">
+                <span class="stat-label">Host</span>
+                <span class="stat-value" id="infraHost">--</span>
+              </div>
+              <div class="stat-row">
+                <span class="stat-label">Load avg 1m</span>
+                <span class="stat-value" id="infraLoadAvg">--</span>
+              </div>
+              <div class="stat-row">
+                <span class="stat-label">Disk free</span>
+                <span class="stat-value" id="infraDiskFree">--</span>
+              </div>
+              <div class="stat-row">
+                <span class="stat-label">Mem available</span>
+                <span class="stat-value" id="infraMemAvail">--</span>
+              </div>
             </div>
           </div>
-        </section>
-        <section class="ops-section">
-          <h3>Provider scores</h3>
-          <div id="providerScores" class="ops-list">
-            <span class="empty-state">No scoring data yet.</span>
-          </div>
-        </section>
-        <section class="ops-section">
-          <h3>Provider cooldowns</h3>
-          <div id="providerCooldowns" class="ops-list">
-            <span class="empty-state">No cooldown data yet.</span>
-          </div>
-        </section>
-        <section class="ops-section">
-          <h3>Deduplication</h3>
-          <div class="metric-grid" id="dedupMetrics">
-            <div class="metric-card">
-              <span class="metric-label">Duplicates detected</span>
-              <strong id="dedupCount">--</strong>
-            </div>
-            <div class="metric-card">
-              <span class="metric-label">Dedup rate</span>
-              <strong id="dedupRate">--</strong>
-            </div>
-          </div>
-        </section>
-        <section class="ops-section">
-          <h3>Cost estimation</h3>
-          <div class="metric-grid" id="costMetrics">
-            <div class="metric-card">
-              <span class="metric-label">Total est. cost</span>
-              <strong id="totalCost">--</strong>
-            </div>
-            <div class="metric-card">
-              <span class="metric-label">Avg cost/request</span>
-              <strong id="avgCostPerRequest">--</strong>
-            </div>
-            <div class="metric-card">
-              <span class="metric-label">Total tokens</span>
-              <strong id="totalTokens">--</strong>
-            </div>
-          </div>
-        </section>
-        <section class="ops-section">
-          <h3>Provider capacity</h3>
-          <div id="providerCapacity" class="ops-list">
-            <span class="empty-state">No capacity metrics yet.</span>
-          </div>
-        </section>
-        <section class="ops-section">
-          <h3>Lifecycle states</h3>
-          <div id="lifecycleBreakdown" class="ops-list">
-            <span class="empty-state">No lifecycle metrics yet.</span>
-          </div>
-        </section>
-        <section class="ops-section">
-          <h3>Provider health</h3>
-          <div id="providerHealth" class="ops-list">
-            <span class="empty-state">No provider metrics yet.</span>
-          </div>
-        </section>
-        <section class="ops-section">
-          <h3>Request categories</h3>
-          <div id="categoryBreakdown" class="ops-list">
-            <span class="empty-state">No category metrics yet.</span>
-          </div>
-        </section>
-      </aside>
-    </main>
+        </div>
+      </section>
 
-    <script src="script.js"></script>
-  </body>
+      <!-- ════════════════════════════════════════════════════════════
+           SECTION: GPU Analytics
+      ═══════════════════════════════════════════════════════════════ -->
+      <section class="view" id="view-gpu">
+        <div class="view-header">
+          <div>
+            <p class="view-eyebrow">Compute Resources</p>
+            <h1 class="view-title">GPU Analytics</h1>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header">
+            <h2 class="panel-title">GPU Device</h2>
+            <span class="panel-badge" id="gpuDetailBadge">--</span>
+          </div>
+          <div id="gpuDetailContent" class="data-list">
+            <div class="data-skeleton"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════════════════════════════════════════════════════════
+           SECTION: Workloads
+      ═══════════════════════════════════════════════════════════════ -->
+      <section class="view" id="view-workloads">
+        <div class="view-header">
+          <div>
+            <p class="view-eyebrow">Execution Engine</p>
+            <h1 class="view-title">Workloads</h1>
+          </div>
+        </div>
+        <div class="dash-grid dash-grid-2">
+          <div class="panel">
+            <div class="panel-header"><h2 class="panel-title">Execution Timelines</h2></div>
+            <div id="executionTimelines" class="data-list">
+              <span class="empty-state">No timelines yet.</span>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><h2 class="panel-title">Lifecycle States</h2></div>
+            <div id="lifecycleBreakdown" class="data-list">
+              <span class="empty-state">No lifecycle metrics yet.</span>
+            </div>
+          </div>
+        </div>
+        <div class="dash-grid dash-grid-2">
+          <div class="panel">
+            <div class="panel-header"><h2 class="panel-title">Request Categories</h2></div>
+            <div id="categoryBreakdown" class="data-list">
+              <span class="empty-state">No category data yet.</span>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><h2 class="panel-title">Scheduler Decisions</h2></div>
+            <div id="schedulerDecisions" class="data-list">
+              <span class="empty-state">No scheduler transitions yet.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════════════════════════════════════════════════════════
+           SECTION: Queue Intelligence
+      ═══════════════════════════════════════════════════════════════ -->
+      <section class="view" id="view-queue">
+        <div class="view-header">
+          <div>
+            <p class="view-eyebrow">Orchestration Engine</p>
+            <h1 class="view-title">Queue Intelligence</h1>
+          </div>
+        </div>
+        <div class="dash-grid dash-grid-4">
+          <div class="panel kpi-mini">
+            <div class="kpi-mini-label">Queue Depth</div>
+            <div class="kpi-mini-value accent-blue" id="queueDepth">--</div>
+          </div>
+          <div class="panel kpi-mini">
+            <div class="kpi-mini-label">Active Executions</div>
+            <div class="kpi-mini-value" id="activeExecutions">--</div>
+          </div>
+          <div class="panel kpi-mini">
+            <div class="kpi-mini-label">Queue Anomalies</div>
+            <div class="kpi-mini-value" id="queueAnomalies">--</div>
+          </div>
+          <div class="panel kpi-mini">
+            <div class="kpi-mini-label">Integrity Violations</div>
+            <div class="kpi-mini-value" id="integrityViolations">--</div>
+          </div>
+        </div>
+        <div class="dash-grid dash-grid-2">
+          <div class="panel">
+            <div class="panel-header"><h2 class="panel-title">Active Queue Inspector</h2></div>
+            <div id="activeQueueInspector" class="data-list">
+              <span class="empty-state">Queue is empty.</span>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><h2 class="panel-title">Lifecycle Violations</h2></div>
+            <div id="violationLog" class="data-list">
+              <span class="empty-state">No violations recorded.</span>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header">
+            <h2 class="panel-title">Recovery & Reconciliation</h2>
+            <span class="panel-badge" id="recoveryActions">--</span>
+          </div>
+          <div class="stat-stack" id="recoveryStats">
+            <div class="stat-row"><span class="stat-label">Recovery actions</span><span class="stat-value" id="recovActionsAlt">--</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════════════════════════════════════════════════════════
+           SECTION: Cost Intelligence
+      ═══════════════════════════════════════════════════════════════ -->
+      <section class="view" id="view-cost">
+        <div class="view-header">
+          <div>
+            <p class="view-eyebrow">Financial Intelligence</p>
+            <h1 class="view-title">Cost Intelligence</h1>
+          </div>
+        </div>
+        <div class="dash-grid dash-grid-4">
+          <div class="panel kpi-mini">
+            <div class="kpi-mini-label">Total Est. Cost</div>
+            <div class="kpi-mini-value accent-emerald" id="totalCost">--</div>
+            <div class="kpi-mini-pressure">session total</div>
+          </div>
+          <div class="panel kpi-mini">
+            <div class="kpi-mini-label">Avg Cost / Request</div>
+            <div class="kpi-mini-value" id="avgCostPerRequest">--</div>
+            <div class="kpi-mini-pressure">heuristic</div>
+          </div>
+          <div class="panel kpi-mini">
+            <div class="kpi-mini-label">Total Tokens</div>
+            <div class="kpi-mini-value" id="totalTokens">--</div>
+            <div class="kpi-mini-pressure">prompt + response</div>
+          </div>
+          <div class="panel kpi-mini">
+            <div class="kpi-mini-label">Est. Monthly Cost</div>
+            <div class="kpi-mini-value accent-yellow" id="heuristicMonthlyCost">--</div>
+            <div class="kpi-mini-pressure">30-day projection</div>
+          </div>
+        </div>
+        <div class="dash-grid dash-grid-3">
+          <div class="panel">
+            <div class="panel-header"><h2 class="panel-title">Cache Savings</h2></div>
+            <div class="stat-stack">
+              <div class="stat-row"><span class="stat-label">Est. cache savings</span><span class="stat-value accent-emerald" id="heuristicCacheSavings">--</span></div>
+              <div class="stat-row"><span class="stat-label">Hit ratio</span><span class="stat-value" id="cacheHitRatio">--</span></div>
+              <div class="stat-row"><span class="stat-label">Hits / Misses</span><span class="stat-value" id="cacheHitsMisses">--</span></div>
+              <div class="stat-row"><span class="stat-label">Entries</span><span class="stat-value" id="cacheEntries">--</span></div>
+              <div class="stat-row"><span class="stat-label">Evictions</span><span class="stat-value" id="cacheEvictions">--</span></div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><h2 class="panel-title">Deduplication Savings</h2></div>
+            <div class="stat-stack">
+              <div class="stat-row"><span class="stat-label">Est. dedup savings</span><span class="stat-value accent-emerald" id="heuristicDedupSavings">--</span></div>
+              <div class="stat-row"><span class="stat-label">Duplicates detected</span><span class="stat-value" id="dedupCount">--</span></div>
+              <div class="stat-row"><span class="stat-label">Dedup rate</span><span class="stat-value" id="dedupRate">--</span></div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><h2 class="panel-title">Session Cost</h2></div>
+            <div class="stat-stack">
+              <div class="stat-row"><span class="stat-label">Session total</span><span class="stat-value" id="heuristicSessionCost">--</span></div>
+              <div class="stat-row"><span class="stat-label">Heuristic label</span><span class="stat-value muted">Not real billing</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><h2 class="panel-title">Provider Cost Breakdown</h2></div>
+          <div id="providerCostBreakdown" class="data-list">
+            <span class="empty-state">No cost data yet.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════════════════════════════════════════════════════════
+           SECTION: Optimization Center
+      ═══════════════════════════════════════════════════════════════ -->
+      <section class="view" id="view-optimization">
+        <div class="view-header">
+          <div>
+            <p class="view-eyebrow">Deterministic Rules Engine</p>
+            <h1 class="view-title">Optimization Center</h1>
+          </div>
+          <span class="last-refresh-label" id="recsGeneratedAt"></span>
+        </div>
+        <div id="recommendationsList" class="recs-grid">
+          <div class="data-skeleton"></div>
+        </div>
+      </section>
+
+      <!-- ════════════════════════════════════════════════════════════
+           SECTION: Providers
+      ═══════════════════════════════════════════════════════════════ -->
+      <section class="view" id="view-providers">
+        <div class="view-header">
+          <div>
+            <p class="view-eyebrow">Routing Intelligence</p>
+            <h1 class="view-title">Provider Health</h1>
+          </div>
+        </div>
+        <div class="dash-grid dash-grid-2">
+          <div class="panel">
+            <div class="panel-header"><h2 class="panel-title">Provider Scores</h2></div>
+            <div id="providerScores" class="data-list">
+              <span class="empty-state">No scoring data yet.</span>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><h2 class="panel-title">Provider Health</h2></div>
+            <div id="providerHealth" class="data-list">
+              <span class="empty-state">No provider data yet.</span>
+            </div>
+          </div>
+        </div>
+        <div class="dash-grid dash-grid-2">
+          <div class="panel">
+            <div class="panel-header"><h2 class="panel-title">Cooldown Status</h2></div>
+            <div id="providerCooldowns" class="data-list">
+              <span class="empty-state">No cooldown data yet.</span>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><h2 class="panel-title">Provider Capacity</h2></div>
+            <div id="providerCapacity" class="data-list">
+              <span class="empty-state">No capacity data yet.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════════════════════════════════════════════════════════
+           SECTION: Telemetry
+      ═══════════════════════════════════════════════════════════════ -->
+      <section class="view" id="view-telemetry">
+        <div class="view-header">
+          <div>
+            <p class="view-eyebrow">Phase 7</p>
+            <h1 class="view-title">Infrastructure Telemetry</h1>
+          </div>
+        </div>
+        <div class="dash-grid dash-grid-2">
+          <div class="panel">
+            <div class="panel-header"><h2 class="panel-title">System Metrics</h2></div>
+            <div class="stat-stack">
+              <div class="stat-row"><span class="stat-label">CPU</span><span class="stat-value" id="telCpu">--</span></div>
+              <div class="stat-row"><span class="stat-label">Memory</span><span class="stat-value" id="telMemory">--</span></div>
+              <div class="stat-row"><span class="stat-label">Disk</span><span class="stat-value" id="telDisk">--</span></div>
+              <div class="stat-row"><span class="stat-label">Load avg 1m</span><span class="stat-value" id="telLoad">--</span></div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><h2 class="panel-title">GPU</h2></div>
+            <div id="telGpuContent" class="data-list">
+              <span class="empty-state">Loading…</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════════════════════════════════════════════════════════
+           SECTION: Sessions
+      ═══════════════════════════════════════════════════════════════ -->
+      <section class="view" id="view-sessions">
+        <div class="view-header">
+          <div>
+            <p class="view-eyebrow">Context Management</p>
+            <h1 class="view-title">Sessions</h1>
+          </div>
+          <button class="btn-primary" id="newSessionButton">+ New Session</button>
+        </div>
+
+        <div class="dash-grid dash-grid-2">
+          <div class="panel">
+            <div class="panel-header">
+              <h2 class="panel-title">Active Sessions</h2>
+              <span class="panel-badge" id="currentSessionName">--</span>
+            </div>
+            <div id="sessionList" class="data-list session-list-scroll">
+              <span class="empty-state">No sessions loaded.</span>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><h2 class="panel-title">Session Memory</h2></div>
+            <div id="sessionHistory" class="data-list">
+              <span class="empty-state">No requests in this session yet.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h2 class="panel-title">Overview</h2>
+          </div>
+          <div class="stat-stack">
+            <div class="stat-row"><span class="stat-label">Requests sent (client)</span><span class="stat-value" id="requestsSent">0</span></div>
+            <div class="stat-row"><span class="stat-label">Successful (client)</span><span class="stat-value" id="successfulWrites">0</span></div>
+            <div class="stat-row"><span class="stat-label">Backend total</span><span class="stat-value" id="backendTotal">--</span></div>
+            <div class="stat-row"><span class="stat-label">Backend failures</span><span class="stat-value" id="backendFailures">--</span></div>
+            <div class="stat-row"><span class="stat-label">Last provider</span><span class="stat-value" id="lastProvider">--</span></div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="script.js"></script>
+</body>
 </html>

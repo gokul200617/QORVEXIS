@@ -11,6 +11,7 @@ from app.orchestration.queue_manager import queue_manager
 from app.routes.ask import router as ask_router
 from app.routes.metrics import router as metrics_router
 from app.routes.sessions import router as sessions_router
+from app.routes.telemetry import router as telemetry_router
 from app.settings import settings
 
 
@@ -54,6 +55,7 @@ def create_app() -> FastAPI:
     app.include_router(ask_router)
     app.include_router(metrics_router)
     app.include_router(sessions_router)
+    app.include_router(telemetry_router)
 
     @app.on_event("startup")
     def ensure_database_tables() -> None:
@@ -70,6 +72,10 @@ def create_app() -> FastAPI:
         from app.services.cost_tracker import cost_tracker  # noqa: F401
         logger.info("phase5.operational_intelligence.ready")
         logger.info("phase6.reliability_hardening.ready")
+
+        # Phase 7 — Initialize telemetry provider
+        from app.telemetry.providers.telemetry_provider import telemetry_provider  # noqa: F401
+        logger.info("phase7.infrastructure_telemetry.ready")
 
     @app.get("/health")
     def health_check() -> dict[str, str | None]:

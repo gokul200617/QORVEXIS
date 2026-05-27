@@ -12,3 +12,10 @@ backend/.env
 __pycache__/
 venv/
 node_modules/
+__pycache__/
+*.pyc
+.env
+venv/
+backend/test.db
+taste-skill-main/
+frontend.txt

@@ -33,6 +33,16 @@ class Settings(BaseSettings):
     queue_enqueue_timeout_seconds: int = 2
     queue_drain_timeout_seconds: int = 300
 
+    # Phase 7 — Infrastructure Telemetry
+    telemetry_enabled: bool = True
+    telemetry_persist_snapshots: bool = True
+    telemetry_persist_interval_seconds: int = 300
+    telemetry_gpu_idle_threshold: float = 10.0
+    telemetry_cpu_high_threshold: float = 85.0
+    telemetry_ram_high_threshold: float = 90.0
+    telemetry_cache_low_threshold: float = 30.0
+    telemetry_queue_pressure_threshold: float = 0.80
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
