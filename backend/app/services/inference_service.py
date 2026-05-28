@@ -135,6 +135,16 @@ def classify_request(prompt: str) -> str:
 
 
 def select_provider_name(prompt: str) -> str:
+    from app.connectors.registry.connector_registry import connector_registry
+    from app.connectors.base.connector_types import ConnectorType
+    
+    openai_active = any(
+        c.connector_type == ConnectorType.AI_PROVIDER and "openai" in c.connector_id.lower()
+        for c in connector_registry.list_all()
+    )
+    if openai_active:
+        return "openai"
+
     normalized_prompt = prompt.lower()
     if any(keyword in normalized_prompt for keyword in GROQ_ROUTING_KEYWORDS):
         return "groq"
@@ -146,10 +156,15 @@ def select_provider_name(prompt: str) -> str:
 
 
 def get_fallback_provider_name(provider_name: str) -> str:
+    if provider_name == "openai":
+        return "gemini"
     return "gemini" if provider_name == "groq" else "groq"
 
 
 def build_provider(provider_name: str) -> InferenceProvider:
+    if provider_name == "openai":
+        from app.providers.openai_provider import OpenAIProvider
+        return OpenAIProvider()
     if provider_name == "groq":
         return GroqProvider()
     return GeminiProvider()

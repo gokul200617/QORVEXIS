@@ -1,4 +1,4 @@
-﻿/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Qorvexis â€” Infrastructure Intelligence Platform
    Frontend Controller v9 â€” Full data binding stabilisation
    All field names verified against live backend responses.
@@ -1095,7 +1095,103 @@ refreshTelemetry();
 // Clear any ghost intervals from hot-reload, then set fresh ones
 if (window._qorvexisMetricsInterval)    clearInterval(window._qorvexisMetricsInterval);
 if (window._qorvexisTelemetryInterval)  clearInterval(window._qorvexisTelemetryInterval);
+if (window._qorvexisOpenAIInterval)     clearInterval(window._qorvexisOpenAIInterval);
 
 window._qorvexisMetricsInterval   = setInterval(refreshMetrics,   30000);  // 30s
 window._qorvexisTelemetryInterval = setInterval(refreshTelemetry, 15000);  // 15s
+
+// ─── Phase 8B: OpenAI Connector Logic ──────────────────────────────────────────
+
+const openaiConnectForm    = document.getElementById("openaiConnectForm");
+const openaiKeyInput       = document.getElementById("openaiKeyInput");
+const openaiSubmitBtn      = document.getElementById("openaiSubmitBtn");
+const openaiFormMessage    = document.getElementById("openaiFormMessage");
+const openaiStatusBadge    = document.getElementById("openaiStatusBadge");
+
+// Token Analytics DOM
+const openaiAnalyticsGrid  = document.getElementById("openaiAnalyticsGrid");
+const openaiTotalSpend     = document.getElementById("openaiTotalSpend");
+const openaiMonthlySpend   = document.getElementById("openaiMonthlySpend");
+const openaiMostExpensive  = document.getElementById("openaiMostExpensive");
+const openaiEfficiency     = document.getElementById("openaiEfficiency");
+
+// Health DOM
+const connectorHealthPanel = document.getElementById("connectorHealthPanel");
+const openaiHealthStatus   = document.getElementById("openaiHealthStatus");
+const openaiSyncCount      = document.getElementById("openaiSyncCount");
+const openaiLastSync       = document.getElementById("openaiLastSync");
+const openaiConnectorId    = document.getElementById("openaiConnectorId");
+
+// State
+let isOpenAIConnected = false;
+
+if (openaiConnectForm) {
+  openaiConnectForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const key = openaiKeyInput.value.trim();
+    if (!key) return;
+
+    openaiSubmitBtn.disabled = true;
+    openaiSubmitBtn.textContent = "Connecting...";
+    openaiFormMessage.textContent = "";
+
+    try {
+      const res = await apiClient.post("/connectors/openai/authenticate", {
+        api_key: key,
+        name: "OpenAI Production"
+      });
+
+      if (res._error) throw new Error(res.reason || "Authentication failed");
+
+      // Success
+      isOpenAIConnected = true;
+      openaiStatusBadge.textContent = "Connected";
+      openaiStatusBadge.className = "panel-badge health-ok";
+      openaiFormMessage.textContent = "Successfully authenticated!";
+      openaiFormMessage.className = "form-message success";
+      openaiKeyInput.value = "";
+      
+      // Show analytics and health panels
+      openaiAnalyticsGrid.style.display = "grid";
+      connectorHealthPanel.style.display = "block";
+      
+      // Update health details immediately
+      openaiHealthStatus.textContent = "Connected";
+      openaiSyncCount.textContent = res.sync_count;
+      openaiLastSync.textContent = fmtTime(res.last_synced_at);
+      openaiConnectorId.textContent = res.connector_id;
+      
+      // Trigger first usage fetch
+      await fetchOpenAIUsage();
+      
+      // Start polling for usage
+      window._qorvexisOpenAIInterval = setInterval(fetchOpenAIUsage, 15000); // 15s
+
+    } catch (err) {
+      openaiFormMessage.textContent = err.message || "Invalid API Key";
+      openaiFormMessage.className = "form-message error";
+      openaiStatusBadge.textContent = "Error";
+      openaiStatusBadge.className = "panel-badge health-critical";
+    } finally {
+      openaiSubmitBtn.disabled = false;
+      openaiSubmitBtn.textContent = "Connect API";
+    }
+  });
+}
+
+async function fetchOpenAIUsage() {
+  if (!isOpenAIConnected) return;
+  const data = await apiClient.get("/connectors/openai/usage");
+  if (data._error) return;
+
+  if (openaiTotalSpend)    openaiTotalSpend.textContent    = fmtUsd(data.total_spend_usd);
+  if (openaiMonthlySpend)  openaiMonthlySpend.textContent  = fmtUsd(data.estimated_monthly_usd);
+  if (openaiMostExpensive) openaiMostExpensive.textContent = fmt(data.most_expensive_model);
+  if (openaiEfficiency)    openaiEfficiency.textContent    = fmtPct(data.efficiency);
+}
+
+// Ensure the interval clears correctly on hot reloads
+window.addEventListener("beforeunload", () => {
+  if (window._qorvexisOpenAIInterval) clearInterval(window._qorvexisOpenAIInterval);
+});
 

@@ -98,6 +98,12 @@
         </svg>
         <span>Sessions</span>
       </a>
+      <a href="#" class="nav-item" data-section="connectors" id="nav-connectors">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+          <path d="M13.5 10a3.5 3.5 0 11-7 0 3.5 3.5 0 017 0zM13.5 10l5-5m-5 5l5 5M6.5 10l-5-5m5 5l-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>Connectors</span>
+      </a>
     </nav>
 
     <div class="sidebar-footer">
@@ -711,6 +717,69 @@
             <div class="stat-row"><span class="stat-label">Backend total</span><span class="stat-value" id="backendTotal">--</span></div>
             <div class="stat-row"><span class="stat-label">Backend failures</span><span class="stat-value" id="backendFailures">--</span></div>
             <div class="stat-row"><span class="stat-label">Last provider</span><span class="stat-value" id="lastProvider">--</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════════════════════════════════════════════════════════
+           SECTION: Connectors
+      ═══════════════════════════════════════════════════════════════ -->
+      <section class="view" id="view-connectors">
+        <div class="view-header">
+          <div>
+            <p class="view-eyebrow">Integrations</p>
+            <h1 class="view-title">Connectors</h1>
+          </div>
+        </div>
+
+        <!-- Token Analytics Cards -->
+        <div class="dash-grid dash-grid-4" id="openaiAnalyticsGrid" style="display: none; margin-bottom: 2rem;">
+          <div class="panel kpi-mini">
+            <div class="kpi-mini-label">Total Spend</div>
+            <div class="kpi-mini-value accent-emerald" id="openaiTotalSpend">$0.00</div>
+          </div>
+          <div class="panel kpi-mini">
+            <div class="kpi-mini-label">Est. Monthly Spend</div>
+            <div class="kpi-mini-value accent-yellow" id="openaiMonthlySpend">$0.00</div>
+          </div>
+          <div class="panel kpi-mini">
+            <div class="kpi-mini-label">Most Expensive Model</div>
+            <div class="kpi-mini-value" id="openaiMostExpensive" style="font-size: 1.25rem;">--</div>
+          </div>
+          <div class="panel kpi-mini">
+            <div class="kpi-mini-label">Token Efficiency</div>
+            <div class="kpi-mini-value" id="openaiEfficiency">--%</div>
+          </div>
+        </div>
+
+        <div class="dash-grid dash-grid-2">
+          <!-- OpenAI Connection Panel -->
+          <div class="panel">
+            <div class="panel-header">
+              <h2 class="panel-title">Connect OpenAI</h2>
+              <span class="panel-badge" id="openaiStatusBadge">Disconnected</span>
+            </div>
+            <form id="openaiConnectForm" class="workload-form" style="margin-top: 1rem;">
+              <div class="form-field">
+                <label for="openaiKeyInput" class="form-label" style="display: block; margin-bottom: 0.5rem; font-size: 0.875rem; color: var(--text-muted);">OpenAI API Key</label>
+                <input type="password" id="openaiKeyInput" placeholder="sk-..." required style="width: 100%; padding: 0.75rem; border-radius: 6px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: var(--text-primary); font-family: monospace;">
+              </div>
+              <div class="form-actions" style="margin-top: 1.5rem; display: flex; align-items: center; gap: 1rem;">
+                <button type="submit" class="btn-primary" id="openaiSubmitBtn">Connect API</button>
+                <p id="openaiFormMessage" class="form-message" aria-live="polite" style="margin: 0; font-size: 0.875rem;"></p>
+              </div>
+            </form>
+          </div>
+
+          <!-- Connector Health -->
+          <div class="panel" id="connectorHealthPanel" style="display: none;">
+            <div class="panel-header"><h2 class="panel-title">Connector Health</h2></div>
+            <div class="stat-stack" style="margin-top: 1rem;">
+              <div class="stat-row"><span class="stat-label">Status</span><span class="stat-value" id="openaiHealthStatus">--</span></div>
+              <div class="stat-row"><span class="stat-label">Sync Count</span><span class="stat-value" id="openaiSyncCount">--</span></div>
+              <div class="stat-row"><span class="stat-label">Last Synced At</span><span class="stat-value" id="openaiLastSync">--</span></div>
+              <div class="stat-row"><span class="stat-label">Connector ID</span><span class="stat-value muted" id="openaiConnectorId" style="font-family: monospace;">--</span></div>
+            </div>
           </div>
         </div>
       </section>
