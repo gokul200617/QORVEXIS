@@ -1,3 +1,5 @@
+backend/operational_history.jsonl
+
 # Environment variables
 .env
 .env.local
