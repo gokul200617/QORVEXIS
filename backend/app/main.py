@@ -85,6 +85,11 @@ def create_app() -> FastAPI:
         from app.connectors.registry.connector_registry import connector_registry  # noqa: F401
         logger.info("phase8a.connector_framework.ready")
 
+        # Phase 8D — Initialize AWS Infrastructure Intelligence connector services
+        from app.connectors.aws.aws_usage_service import aws_usage_service  # noqa: F401
+        from app.connectors.aws.aws_connector_summary_service import aws_connector_summary_service  # noqa: F401
+        logger.info("phase8d.aws_infrastructure_intelligence.ready")
+
     @app.get("/health")
     def health_check() -> dict[str, str | None]:
         database_ok, database_error = check_database()

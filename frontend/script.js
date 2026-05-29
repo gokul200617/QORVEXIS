@@ -1200,3 +1200,450 @@ window.addEventListener("beforeunload", () => {
   if (window._qorvexisOpenAIInterval) clearInterval(window._qorvexisOpenAIInterval);
 });
 
+// ─── Phase 8D: AWS Cloud Intelligence ───────────────────────────────────────
+
+// ── DOM refs ─────────────────────────────────────────────────────────────────
+const awsConnectForm          = document.getElementById("awsConnectForm");
+const awsAccessKeyInput       = document.getElementById("awsAccessKeyInput");
+const awsSecretKeyInput       = document.getElementById("awsSecretKeyInput");
+const awsRegionInput          = document.getElementById("awsRegionInput");
+const awsDemoModeToggle       = document.getElementById("awsDemoModeToggle");
+const awsSubmitBtn            = document.getElementById("awsSubmitBtn");
+const awsFormMessage          = document.getElementById("awsFormMessage");
+const awsConnectorStatusBadge = document.getElementById("awsConnectorStatusBadge");
+const awsAccountPanel         = document.getElementById("awsAccountPanel");
+const awsRefreshBtn           = document.getElementById("awsRefreshBtn");
+const awsLastSyncLabel        = document.getElementById("awsLastSyncLabel");
+const awsSyncStatusBadge      = document.getElementById("awsSyncStatusBadge");
+
+// Account metadata
+const awsAccountId            = document.getElementById("awsAccountId");
+const awsAccountAlias         = document.getElementById("awsAccountAlias");
+const awsAccountRegion        = document.getElementById("awsAccountRegion");
+const awsLastSync             = document.getElementById("awsLastSync");
+const awsResourcesDiscovered  = document.getElementById("awsResourcesDiscovered");
+const awsSuccessfulSyncs      = document.getElementById("awsSuccessfulSyncs");
+const awsFailedSyncs          = document.getElementById("awsFailedSyncs");
+const awsConnectorId          = document.getElementById("awsConnectorId");
+
+// KPI cards
+const awsMonthlySpend         = document.getElementById("awsMonthlySpend");
+const awsDailySpend           = document.getElementById("awsDailySpend");
+const awsActiveInstances      = document.getElementById("awsActiveInstances");
+const awsTotalInstancesSub    = document.getElementById("awsTotalInstancesSub");
+const awsUnderutilized        = document.getElementById("awsUnderutilized");
+const awsHealthScore          = document.getElementById("awsHealthScore");
+const awsHealthBar            = document.getElementById("awsHealthBar");
+const awsOptimizationScore    = document.getElementById("awsOptimizationScore");
+const awsOptimizationBar      = document.getElementById("awsOptimizationBar");
+const awsWasteScore           = document.getElementById("awsWasteScore");
+const awsEstimatedSavings     = document.getElementById("awsEstimatedSavings");
+
+// Intelligence panels
+const awsRecommendationsList  = document.getElementById("awsRecommendationsList");
+const awsRecCount             = document.getElementById("awsRecCount");
+const awsCostBreakdown        = document.getElementById("awsCostBreakdown");
+const awsSpendTrend           = document.getElementById("awsSpendTrend");
+const awsInstanceList         = document.getElementById("awsInstanceList");
+const awsAnalyticsPanel       = document.getElementById("awsAnalyticsPanel");
+
+let isAWSConnected = false;
+
+// ── AWS Connect Form Handler ──────────────────────────────────────────────────
+
+if (awsConnectForm) {
+  awsConnectForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const accessKey     = awsAccessKeyInput  ? awsAccessKeyInput.value.trim()  : "";
+    const secretKey     = awsSecretKeyInput  ? awsSecretKeyInput.value.trim()  : "";
+    const region        = awsRegionInput     ? awsRegionInput.value             : "us-east-1";
+    const simulationMode = awsDemoModeToggle ? awsDemoModeToggle.checked        : false;
+
+    // If real mode, require both keys
+    if (!simulationMode && (!accessKey || !secretKey)) {
+      if (awsFormMessage) {
+        awsFormMessage.textContent = "Please provide both Access Key ID and Secret Access Key, or enable Demo Mode.";
+        awsFormMessage.className   = "form-message error";
+      }
+      return;
+    }
+
+    // In demo mode allow empty keys
+    const payload = {
+      access_key:      simulationMode ? "DEMO_ACCESS_KEY" : accessKey,
+      secret_key:      simulationMode ? "DEMO_SECRET_KEY" : secretKey,
+      region:          region,
+      name:            simulationMode ? "AWS Demo Account" : "AWS Production",
+      simulation_mode: simulationMode,
+    };
+
+    if (awsSubmitBtn) { awsSubmitBtn.disabled = true; awsSubmitBtn.textContent = "Connecting…"; }
+    if (awsFormMessage) { awsFormMessage.textContent = ""; awsFormMessage.className = "form-message"; }
+    if (awsConnectorStatusBadge) awsConnectorStatusBadge.textContent = "Connecting…";
+
+    try {
+      const res = await apiClient.post("/connectors/aws/connect", payload);
+      if (res._error) throw new Error(res.reason || "Connection failed");
+
+      // ── Success ───────────────────────────────────────────────────────────
+      isAWSConnected = true;
+
+      if (awsConnectorStatusBadge) {
+        awsConnectorStatusBadge.textContent = simulationMode ? "Demo Mode" : "Connected";
+        awsConnectorStatusBadge.className   = simulationMode ? "panel-badge health-warn" : "panel-badge health-ok";
+      }
+      if (awsFormMessage) {
+        awsFormMessage.textContent = res.message || "AWS connector registered successfully.";
+        awsFormMessage.className   = "form-message success";
+      }
+
+      // Show the account panel
+      if (awsAccountPanel) awsAccountPanel.style.display = "block";
+      if (awsConnectorId)  awsConnectorId.textContent    = res.connector_id || "--";
+      if (awsAccountRegion) awsAccountRegion.textContent = res.region || "--";
+
+      // Clear sensitive inputs
+      if (awsAccessKeyInput) awsAccessKeyInput.value = "";
+      if (awsSecretKeyInput) awsSecretKeyInput.value = "";
+
+      // Initial data fetch + start polling
+      await fetchAWSSummary();
+
+      // Poll every 60 seconds to avoid excessive AWS API costs
+      if (window._qorvexisAWSInterval) clearInterval(window._qorvexisAWSInterval);
+      window._qorvexisAWSInterval = setInterval(fetchAWSSummary, 60000);
+
+    } catch (err) {
+      if (awsFormMessage) {
+        awsFormMessage.textContent = err.message || "AWS connection failed.";
+        awsFormMessage.className   = "form-message error";
+      }
+      if (awsConnectorStatusBadge) {
+        awsConnectorStatusBadge.textContent = "Error";
+        awsConnectorStatusBadge.className   = "panel-badge health-critical";
+      }
+    } finally {
+      if (awsSubmitBtn) { awsSubmitBtn.disabled = false; awsSubmitBtn.textContent = "Connect AWS"; }
+    }
+  });
+}
+
+// Manual refresh button
+if (awsRefreshBtn) {
+  awsRefreshBtn.addEventListener("click", async () => {
+    awsRefreshBtn.textContent = "Syncing…";
+    awsRefreshBtn.disabled    = true;
+    await fetchAWSSummary();
+    awsRefreshBtn.textContent = "Sync now";
+    awsRefreshBtn.disabled    = false;
+  });
+}
+
+// ── Primary AWS Data Fetch (summary endpoint) ─────────────────────────────────
+
+async function fetchAWSSummary() {
+  const data = await apiClient.get("/connectors/aws/summary");
+  if (data._error) {
+    console.warn("[Qorvexis] AWS summary unavailable:", data.reason);
+    return;
+  }
+
+  try {
+    renderAWSSummary(data);
+  } catch (err) {
+    console.warn("[Qorvexis] AWS render error:", err);
+  }
+}
+
+// ── Render: KPI Cards ─────────────────────────────────────────────────────────
+
+function renderAWSSummary(data) {
+  if (!data.available) {
+    // Connector not connected — show disconnected state gracefully
+    return;
+  }
+
+  // ── KPI Cards ─────────────────────────────────────────────────────────────
+  if (awsMonthlySpend)  awsMonthlySpend.textContent  = fmtUsd(data.monthly_spend);
+  if (awsDailySpend)    awsDailySpend.textContent    = fmtUsd(data.daily_spend);
+  if (awsActiveInstances) awsActiveInstances.textContent = fmt(data.active_instances, "0");
+  if (awsTotalInstancesSub) awsTotalInstancesSub.textContent = `${data.total_instances || 0} total`;
+  if (awsUnderutilized) awsUnderutilized.textContent = fmt(data.underutilized_instances, "0");
+  if (awsEstimatedSavings) awsEstimatedSavings.textContent = fmtUsd(data.estimated_savings);
+
+  // Health score
+  const health = data.infrastructure_health_score || 0;
+  if (awsHealthScore) {
+    awsHealthScore.textContent = `${health}/100`;
+    awsHealthScore.className   = `kpi-mini-value ${health >= 75 ? "health-ok" : health >= 40 ? "health-warn" : "health-critical"}`;
+  }
+  if (awsHealthBar) {
+    awsHealthBar.style.width = `${health}%`;
+    awsHealthBar.className   = `progress-bar-fill ${health >= 75 ? "pressure-low" : health >= 40 ? "pressure-medium" : "pressure-high"}`;
+  }
+
+  // Optimization score
+  const optScore = data.optimization_score || 0;
+  if (awsOptimizationScore) awsOptimizationScore.textContent = `${optScore}/100`;
+  if (awsOptimizationBar)   awsOptimizationBar.style.width   = `${optScore}%`;
+
+  // Waste score
+  if (awsWasteScore) {
+    const ws = data.waste_score || 0;
+    awsWasteScore.textContent = `${ws}%`;
+    awsWasteScore.className   = `kpi-mini-value ${ws >= 50 ? "health-critical" : ws >= 25 ? "health-warn" : "health-ok"}`;
+  }
+
+  // ── Sync state ─────────────────────────────────────────────────────────────
+  const syncState = data.sync_state || {};
+  const syncStatus = data.connector_status || syncState.sync_status || "idle";
+
+  if (awsSyncStatusBadge) {
+    awsSyncStatusBadge.textContent = syncStatus;
+    awsSyncStatusBadge.className   = `panel-badge ${
+      syncStatus === "completed" ? "health-ok"
+      : syncStatus === "degraded" || syncStatus === "failed" ? "health-critical"
+      : syncStatus === "syncing" ? "health-warn"
+      : ""
+    }`;
+  }
+
+  const lastSyncIso = data.last_sync;
+  if (awsLastSync)      awsLastSync.textContent      = lastSyncIso ? fmtTime(lastSyncIso) : "--";
+  if (awsLastSyncLabel) awsLastSyncLabel.textContent = lastSyncIso ? `Last sync ${fmtTime(lastSyncIso)}` : "Awaiting sync";
+
+  if (awsResourcesDiscovered) awsResourcesDiscovered.textContent = fmt(syncState.resources_discovered, "0");
+  if (awsSuccessfulSyncs)     awsSuccessfulSyncs.textContent     = fmt(syncState.successful_sync_count, "0");
+  if (awsFailedSyncs)         awsFailedSyncs.textContent         = fmt(syncState.failed_sync_count, "0");
+
+  // ── Account metadata ────────────────────────────────────────────────────────
+  const acct = data.account_metadata || {};
+  if (awsAccountId)    awsAccountId.textContent    = fmt(acct.account_id, "--");
+  if (awsAccountAlias) awsAccountAlias.textContent = fmt(acct.account_alias, "—");
+  if (awsAccountRegion && !awsAccountRegion.textContent.match(/^[a-z]/)) {
+    awsAccountRegion.textContent = fmt(acct.region, "--");
+  }
+
+  // ── Optimization recommendations (top 3 from summary) ─────────────────────
+  const topRecs = data.top_recommendations || [];
+  const totalRec = data.recommendation_count || 0;
+  if (awsRecCount) awsRecCount.textContent = `${totalRec} recommendation${totalRec !== 1 ? "s" : ""}`;
+  renderAWSRecommendations(topRecs, totalRec);
+
+  // ── Analytics panel ─────────────────────────────────────────────────────────
+  renderAWSAnalytics(data);
+
+  // Show account panel if hidden
+  if (awsAccountPanel && awsAccountPanel.style.display === "none") {
+    awsAccountPanel.style.display = "block";
+  }
+
+  // Also fetch full recommendations + cost breakdown
+  fetchAWSRecommendationsFull();
+  fetchAWSCostBreakdown();
+}
+
+// ── Render: Optimization Recommendations ─────────────────────────────────────
+
+function renderAWSRecommendations(recs, totalCount) {
+  if (!awsRecommendationsList) return;
+
+  if (!recs || !recs.length) {
+    if (totalCount === 0) {
+      awsRecommendationsList.innerHTML = `
+        <div style="text-align:center;padding:24px;">
+          <p style="color:var(--emerald);font-weight:600;margin-bottom:6px;">✓ No optimization issues detected</p>
+          <p class="empty-state" style="font-style:normal;">Your AWS infrastructure appears efficient.</p>
+        </div>
+      `;
+    } else {
+      awsRecommendationsList.innerHTML = `<span class="empty-state">Loading recommendations…</span>`;
+    }
+    return;
+  }
+
+  awsRecommendationsList.innerHTML = recs.map(rec => {
+    const severityColor = {
+      critical: "var(--red, #ef4444)",
+      high:     "var(--yellow, #eab308)",
+      medium:   "var(--accent, #6366f1)",
+      low:      "var(--emerald, #10b981)",
+    }[rec.severity] || "var(--text-muted)";
+
+    const savings = rec.estimated_monthly_savings_usd > 0
+      ? `<div style="margin-top:8px;padding:6px 10px;background:rgba(16,185,129,0.1);border-radius:6px;font-size:.85rem;">
+           <strong style="color:var(--emerald)">Est. savings: ${fmtUsd(rec.estimated_monthly_savings_usd)}/mo</strong>
+           · ${(rec.affected_resources || []).length} resource${rec.affected_resources.length !== 1 ? "s" : ""} affected
+         </div>` : "";
+
+    return `
+      <div style="border:1px solid var(--border);border-left:3px solid ${severityColor};border-radius:8px;padding:14px;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <span style="font-size:.75rem;font-weight:600;color:${severityColor};text-transform:uppercase;letter-spacing:.05em;">${escapeHtml(rec.severity)}</span>
+          <strong style="font-size:.95rem;">${escapeHtml(rec.title)}</strong>
+        </div>
+        <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:4px;line-height:1.5;">${escapeHtml(rec.why)}</p>
+        <p style="font-size:.82rem;color:var(--text-secondary);line-height:1.4;font-style:italic;">${escapeHtml(rec.impact)}</p>
+        ${savings}
+      </div>
+    `;
+  }).join("");
+}
+
+// ── Fetch full recommendations (separate call for detail) ─────────────────────
+
+async function fetchAWSRecommendationsFull() {
+  const data = await apiClient.get("/connectors/aws/recommendations");
+  if (data._error || !data.available) return;
+
+  const recs = data.recommendations || [];
+  if (awsRecCount) awsRecCount.textContent = `${recs.length} recommendation${recs.length !== 1 ? "s" : ""}`;
+  renderAWSRecommendations(recs, recs.length);
+}
+
+// ── Render: Cost Breakdown ────────────────────────────────────────────────────
+
+async function fetchAWSCostBreakdown() {
+  const data = await apiClient.get("/connectors/aws/costs");
+  if (data._error || !data.available) return;
+
+  renderAWSCostBreakdown(data);
+}
+
+function renderAWSCostBreakdown(data) {
+  if (!awsCostBreakdown) return;
+
+  const categoryBreakdown = data.category_breakdown || {};
+  const spendTrend        = data.spend_trend        || {};
+  const topServices       = data.top_services       || [];
+
+  // Spend trend badge
+  if (awsSpendTrend) {
+    const dir = spendTrend.direction || "stable";
+    awsSpendTrend.textContent = dir === "increasing"
+      ? `↑ ${spendTrend.change_pct}% vs prior week`
+      : dir === "decreasing"
+        ? `↓ ${Math.abs(spendTrend.change_pct)}% vs prior week`
+        : "Stable";
+    awsSpendTrend.className = `panel-badge ${dir === "increasing" ? "health-critical" : dir === "decreasing" ? "health-ok" : ""}`;
+  }
+
+  const categoryRows = Object.entries(categoryBreakdown)
+    .filter(([, v]) => v > 0)
+    .sort(([, a], [, b]) => b - a)
+    .map(([service, amount]) => `
+      <div class="stat-row">
+        <span class="stat-label" style="text-transform:capitalize;">${escapeHtml(service)}</span>
+        <span class="stat-value">${fmtUsd(amount)}</span>
+      </div>
+    `).join("");
+
+  const topServiceRows = topServices.slice(0, 5).map(s => `
+    <div class="stat-row">
+      <span class="stat-label" style="font-size:.8rem;">${escapeHtml(s.service)}</span>
+      <span class="stat-value">${fmtUsd(s.amount)}</span>
+    </div>
+  `).join("");
+
+  awsCostBreakdown.innerHTML = `
+    <div style="font-size:.75rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Category</div>
+    ${categoryRows || '<span class="empty-state">No category data.</span>'}
+    <div style="font-size:.75rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin:12px 0 8px;">Top Services</div>
+    ${topServiceRows || '<span class="empty-state">No service data.</span>'}
+  `;
+
+  // Instance fleet
+  fetchAWSInstanceFleet();
+}
+
+// ── Fetch + Render: EC2 Instance Fleet ───────────────────────────────────────
+
+async function fetchAWSInstanceFleet() {
+  const data = await apiClient.get("/connectors/aws/infrastructure");
+  if (data._error || !data.available) return;
+
+  renderAWSInstanceFleet(data.instances || []);
+}
+
+function renderAWSInstanceFleet(instances) {
+  if (!awsInstanceList) return;
+
+  if (!instances.length) {
+    awsInstanceList.innerHTML = '<span class="empty-state">No instances discovered yet.</span>';
+    return;
+  }
+
+  awsInstanceList.innerHTML = instances.map(inst => {
+    const stateColor = {
+      running:    "var(--emerald)",
+      stopped:    "var(--text-muted)",
+      terminated: "var(--red, #ef4444)",
+    }[inst.state] || "var(--text-muted)";
+
+    const cpuLabel = inst.state === "running"
+      ? `CPU ${fmtPct(inst.cpu_utilization)}${inst.cpu_utilization < 10 ? " ⚠ underutilized" : ""}`
+      : inst.state;
+
+    return `
+      <div class="data-row" style="border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="width:8px;height:8px;border-radius:50%;background:${stateColor};display:inline-block;flex-shrink:0;"></span>
+          <strong style="font-family:monospace;font-size:.85rem;">${escapeHtml(inst.instance_id)}</strong>
+          <span style="font-size:.8rem;color:var(--text-muted);">${escapeHtml(inst.instance_type)}</span>
+        </div>
+        <span style="font-size:.8rem;color:${inst.cpu_utilization < 10 && inst.state === "running" ? "var(--yellow, #eab308)" : "var(--text-muted)"};">${cpuLabel}</span>
+      </div>
+    `;
+  }).join("");
+}
+
+// ── Render: Cloud Infrastructure Analytics ───────────────────────────────────
+
+function renderAWSAnalytics(data) {
+  if (!awsAnalyticsPanel) return;
+
+  const active  = data.active_instances || 0;
+  const total   = data.total_instances  || 0;
+  const under   = data.underutilized_instances || 0;
+  const health  = data.infrastructure_health_score || 0;
+  const optScore = data.optimization_score || 0;
+  const savings = data.estimated_savings || 0;
+  const monthly = data.monthly_spend || 0;
+
+  const utilizationRate = active > 0 ? Math.round((active / Math.max(total, 1)) * 100) : 0;
+  const wasteRate = under > 0 && active > 0 ? Math.round((under / active) * 100) : 0;
+
+  awsAnalyticsPanel.innerHTML = `
+    <div class="stat-row"><span class="stat-label">Fleet Utilization Rate</span><span class="stat-value">${utilizationRate}% running</span></div>
+    <div class="stat-row"><span class="stat-label">Waste Rate (underutil.)</span><span class="stat-value ${wasteRate > 40 ? "health-critical" : wasteRate > 20 ? "health-warn" : "health-ok"}">${wasteRate}% of fleet</span></div>
+    <div class="stat-row"><span class="stat-label">Infrastructure Health</span><span class="stat-value ${health >= 75 ? "health-ok" : health >= 40 ? "health-warn" : "health-critical"}">${health}/100</span></div>
+    <div class="stat-row"><span class="stat-label">Optimization Score</span><span class="stat-value">${optScore}/100</span></div>
+    <div class="stat-row"><span class="stat-label">Monthly AWS Spend</span><span class="stat-value">${fmtUsd(monthly)}</span></div>
+    <div class="stat-row"><span class="stat-label">Potential Savings/Mo</span><span class="stat-value accent-emerald">${fmtUsd(savings)}</span></div>
+    <div class="stat-row"><span class="stat-label">Savings as % of Spend</span><span class="stat-value">${monthly > 0 ? Math.round((savings / monthly) * 100) : 0}%</span></div>
+  `;
+}
+
+// ── Interval management ───────────────────────────────────────────────────────
+
+window.addEventListener("beforeunload", () => {
+  if (window._qorvexisAWSInterval) clearInterval(window._qorvexisAWSInterval);
+});
+
+// Auto-poll AWS summary if already connected on load (e.g. page refresh)
+(async () => {
+  const health = await apiClient.get("/connectors/aws/health");
+  if (!health._error && health.available) {
+    isAWSConnected = true;
+    if (awsConnectorStatusBadge) {
+      awsConnectorStatusBadge.textContent = "Connected";
+      awsConnectorStatusBadge.className   = "panel-badge health-ok";
+    }
+    if (awsAccountPanel) awsAccountPanel.style.display = "block";
+    await fetchAWSSummary();
+    if (window._qorvexisAWSInterval) clearInterval(window._qorvexisAWSInterval);
+    window._qorvexisAWSInterval = setInterval(fetchAWSSummary, 60000);
+  }
+})();
+

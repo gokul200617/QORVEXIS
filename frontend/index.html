@@ -104,6 +104,14 @@
         </svg>
         <span>Connectors</span>
       </a>
+      <a href="#" class="nav-item" data-section="aws" id="nav-aws">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+          <path d="M3 10a7 7 0 1114 0 7 7 0 01-14 0z" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M10 6v4l2.5 2.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          <path d="M6 17.5c0-2 1.8-3.5 4-3.5s4 1.5 4 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+        <span>Cloud Intelligence</span>
+      </a>
     </nav>
 
     <div class="sidebar-footer">
@@ -782,6 +790,176 @@
             </div>
           </div>
         </div>
+      </section>
+
+      <!-- ════════════════════════════════════════════════════════════
+           SECTION: AWS Cloud Intelligence — Phase 8D
+      ═══════════════════════════════════════════════════════════════ -->
+      <section class="view" id="view-aws">
+        <div class="view-header">
+          <div>
+            <p class="view-eyebrow">Cloud Infrastructure</p>
+            <h1 class="view-title">AWS Intelligence</h1>
+          </div>
+          <div class="view-meta">
+            <span class="last-refresh-label" id="awsLastSyncLabel">Not connected</span>
+            <button class="btn-secondary" id="awsRefreshBtn">Sync now</button>
+          </div>
+        </div>
+
+        <!-- ── AWS Connect Form + Account Status ───────────────────── -->
+        <div class="dash-grid dash-grid-2" style="margin-bottom: 2rem;">
+
+          <!-- Connect Panel -->
+          <div class="panel" id="awsConnectPanel">
+            <div class="panel-header">
+              <h2 class="panel-title">Connect AWS Account</h2>
+              <span class="panel-badge" id="awsConnectorStatusBadge">Disconnected</span>
+            </div>
+            <form id="awsConnectForm" class="workload-form" style="margin-top: 1rem;">
+              <div class="form-field">
+                <label for="awsAccessKeyInput" class="form-label" style="display:block;margin-bottom:.5rem;font-size:.875rem;color:var(--text-muted);">AWS Access Key ID</label>
+                <input type="text" id="awsAccessKeyInput" placeholder="AKIAIOSFODNN7EXAMPLE" autocomplete="off" style="width:100%;padding:.75rem;border-radius:6px;background:rgba(0,0,0,0.2);border:1px solid var(--border);color:var(--text-primary);font-family:monospace;" />
+              </div>
+              <div class="form-field" style="margin-top:.75rem;">
+                <label for="awsSecretKeyInput" class="form-label" style="display:block;margin-bottom:.5rem;font-size:.875rem;color:var(--text-muted);">AWS Secret Access Key</label>
+                <input type="password" id="awsSecretKeyInput" placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY" autocomplete="off" style="width:100%;padding:.75rem;border-radius:6px;background:rgba(0,0,0,0.2);border:1px solid var(--border);color:var(--text-primary);font-family:monospace;" />
+              </div>
+              <div class="form-field" style="margin-top:.75rem;">
+                <label for="awsRegionInput" class="form-label" style="display:block;margin-bottom:.5rem;font-size:.875rem;color:var(--text-muted);">AWS Region</label>
+                <select id="awsRegionInput" style="width:100%;padding:.75rem;border-radius:6px;background:rgba(0,0,0,0.2);border:1px solid var(--border);color:var(--text-primary);">
+                  <option value="us-east-1">us-east-1 (N. Virginia)</option>
+                  <option value="us-east-2">us-east-2 (Ohio)</option>
+                  <option value="us-west-1">us-west-1 (N. California)</option>
+                  <option value="us-west-2">us-west-2 (Oregon)</option>
+                  <option value="eu-west-1">eu-west-1 (Ireland)</option>
+                  <option value="eu-west-2">eu-west-2 (London)</option>
+                  <option value="eu-central-1">eu-central-1 (Frankfurt)</option>
+                  <option value="ap-southeast-1">ap-southeast-1 (Singapore)</option>
+                  <option value="ap-northeast-1">ap-northeast-1 (Tokyo)</option>
+                  <option value="ap-south-1">ap-south-1 (Mumbai)</option>
+                </select>
+              </div>
+              <div class="form-field" style="margin-top:.75rem;display:flex;align-items:center;gap:.75rem;">
+                <input type="checkbox" id="awsDemoModeToggle" style="width:16px;height:16px;cursor:pointer;" />
+                <label for="awsDemoModeToggle" style="font-size:.875rem;color:var(--text-muted);cursor:pointer;">Enable Demo Mode (simulated data, no real AWS calls)</label>
+              </div>
+              <div class="form-actions" style="margin-top:1.5rem;display:flex;align-items:center;gap:1rem;">
+                <button type="submit" class="btn-primary" id="awsSubmitBtn">Connect AWS</button>
+                <p id="awsFormMessage" class="form-message" aria-live="polite" style="margin:0;font-size:.875rem;"></p>
+              </div>
+            </form>
+          </div>
+
+          <!-- Account Metadata + Sync State Panel -->
+          <div class="panel" id="awsAccountPanel" style="display:none;">
+            <div class="panel-header">
+              <h2 class="panel-title">Account &amp; Sync Status</h2>
+              <span class="panel-badge" id="awsSyncStatusBadge">idle</span>
+            </div>
+            <div class="stat-stack" style="margin-top:1rem;">
+              <div class="stat-row"><span class="stat-label">Account ID</span><span class="stat-value" id="awsAccountId" style="font-family:monospace;">--</span></div>
+              <div class="stat-row"><span class="stat-label">Alias</span><span class="stat-value" id="awsAccountAlias">--</span></div>
+              <div class="stat-row"><span class="stat-label">Region</span><span class="stat-value" id="awsAccountRegion" style="font-family:monospace;">--</span></div>
+              <div class="stat-row"><span class="stat-label">Last Sync</span><span class="stat-value" id="awsLastSync">--</span></div>
+              <div class="stat-row"><span class="stat-label">Resources Discovered</span><span class="stat-value" id="awsResourcesDiscovered">--</span></div>
+              <div class="stat-row"><span class="stat-label">Successful Syncs</span><span class="stat-value health-ok" id="awsSuccessfulSyncs">--</span></div>
+              <div class="stat-row"><span class="stat-label">Failed Syncs</span><span class="stat-value" id="awsFailedSyncs">--</span></div>
+              <div class="stat-row"><span class="stat-label">Connector ID</span><span class="stat-value muted" id="awsConnectorId" style="font-family:monospace;font-size:.8rem;">--</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── AWS Infrastructure KPI Row ──────────────────────────── -->
+        <div class="dash-grid dash-grid-4" id="awsKpiGrid" style="margin-bottom:2rem;">
+          <div class="panel kpi-mini">
+            <div class="kpi-mini-label">Monthly Spend</div>
+            <div class="kpi-mini-value accent-yellow" id="awsMonthlySpend">--</div>
+            <div class="kpi-mini-pressure">Cost Explorer</div>
+          </div>
+          <div class="panel kpi-mini">
+            <div class="kpi-mini-label">Daily Spend</div>
+            <div class="kpi-mini-value" id="awsDailySpend">--</div>
+            <div class="kpi-mini-pressure">yesterday</div>
+          </div>
+          <div class="panel kpi-mini">
+            <div class="kpi-mini-label">Active Instances</div>
+            <div class="kpi-mini-value accent-blue" id="awsActiveInstances">--</div>
+            <div class="kpi-mini-pressure" id="awsTotalInstancesSub">-- total</div>
+          </div>
+          <div class="panel kpi-mini">
+            <div class="kpi-mini-label">Underutilized</div>
+            <div class="kpi-mini-value accent-red" id="awsUnderutilized">--</div>
+            <div class="kpi-mini-pressure">CPU &lt; 10%</div>
+          </div>
+          <div class="panel kpi-mini">
+            <div class="kpi-mini-label">Infra Health</div>
+            <div class="kpi-mini-value" id="awsHealthScore">--</div>
+            <div class="progress-bar-track" style="margin-top:.5rem;"><div class="progress-bar-fill" id="awsHealthBar" style="width:0%"></div></div>
+          </div>
+          <div class="panel kpi-mini">
+            <div class="kpi-mini-label">Optimization Score</div>
+            <div class="kpi-mini-value accent-emerald" id="awsOptimizationScore">--</div>
+            <div class="progress-bar-track" style="margin-top:.5rem;"><div class="progress-bar-fill pressure-low" id="awsOptimizationBar" style="width:0%"></div></div>
+          </div>
+          <div class="panel kpi-mini">
+            <div class="kpi-mini-label">Waste Score</div>
+            <div class="kpi-mini-value" id="awsWasteScore">--</div>
+            <div class="kpi-mini-pressure">higher = more waste</div>
+          </div>
+          <div class="panel kpi-mini">
+            <div class="kpi-mini-label">Est. Monthly Savings</div>
+            <div class="kpi-mini-value accent-emerald" id="awsEstimatedSavings">--</div>
+            <div class="kpi-mini-pressure">from recommendations</div>
+          </div>
+        </div>
+
+        <!-- ── AWS Optimization Center + Cost Analytics ─────────────── -->
+        <div class="dash-grid dash-grid-2" style="margin-bottom:2rem;">
+
+          <!-- Optimization Recommendations -->
+          <div class="panel">
+            <div class="panel-header">
+              <h2 class="panel-title">AWS Optimization Center</h2>
+              <span class="panel-badge" id="awsRecCount">0 recommendations</span>
+            </div>
+            <div id="awsRecommendationsList" class="data-list" style="margin-top:1rem;">
+              <span class="empty-state">Connect an AWS account to see optimization recommendations.</span>
+            </div>
+          </div>
+
+          <!-- Cost Breakdown -->
+          <div class="panel">
+            <div class="panel-header">
+              <h2 class="panel-title">Service Cost Breakdown</h2>
+              <span class="panel-badge" id="awsSpendTrend">--</span>
+            </div>
+            <div class="stat-stack" id="awsCostBreakdown" style="margin-top:1rem;">
+              <span class="empty-state">Cost data unavailable.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Cloud Infrastructure Analytics ───────────────────────── -->
+        <div class="dash-grid dash-grid-2">
+          <div class="panel">
+            <div class="panel-header">
+              <h2 class="panel-title">EC2 Instance Fleet</h2>
+            </div>
+            <div id="awsInstanceList" class="data-list" style="margin-top:1rem;max-height:320px;overflow-y:auto;">
+              <span class="empty-state">No instance data yet.</span>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header">
+              <h2 class="panel-title">Cloud Infrastructure Analytics</h2>
+            </div>
+            <div class="stat-stack" id="awsAnalyticsPanel" style="margin-top:1rem;">
+              <span class="empty-state">Connect an AWS account to see analytics.</span>
+            </div>
+          </div>
+        </div>
+
       </section>
 
     </main>
