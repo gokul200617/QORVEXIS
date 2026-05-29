@@ -1004,7 +1004,7 @@ async function fetchGpuMetrics() {
 // { count, last_updated_at, generated_at,
 //   recommendations: [ { severity, title, detail, estimated_monthly_waste_usd, estimated_savings_usd } ] }
 async function fetchRecommendations() {
-  const data = await apiClient.get("/metrics/recommendations");
+  const data = await apiClient.get("/analytics/token/recommendations");
   if (data._error) return;
 
   const recs = data.recommendations || [];
@@ -1181,13 +1181,18 @@ if (openaiConnectForm) {
 
 async function fetchOpenAIUsage() {
   if (!isOpenAIConnected) return;
-  const data = await apiClient.get("/connectors/openai/usage");
-  if (data._error) return;
+  const spendData = await apiClient.get("/analytics/token/spend");
+  const effData = await apiClient.get("/analytics/token/efficiency");
+  
+  if (spendData._error || effData._error) return;
 
-  if (openaiTotalSpend)    openaiTotalSpend.textContent    = fmtUsd(data.total_spend_usd);
-  if (openaiMonthlySpend)  openaiMonthlySpend.textContent  = fmtUsd(data.estimated_monthly_usd);
-  if (openaiMostExpensive) openaiMostExpensive.textContent = fmt(data.most_expensive_model);
-  if (openaiEfficiency)    openaiEfficiency.textContent    = fmtPct(data.efficiency);
+  if (openaiTotalSpend)    openaiTotalSpend.textContent    = fmtUsd(spendData.summary?.total_spend_usd);
+  if (openaiMonthlySpend)  openaiMonthlySpend.textContent  = fmtUsd(spendData.summary?.estimated_monthly_usd);
+  
+  const mostExpensive = spendData.drivers?.models?.[0]?.model || "--";
+  if (openaiMostExpensive) openaiMostExpensive.textContent = fmt(mostExpensive);
+  
+  if (openaiEfficiency)    openaiEfficiency.textContent    = fmtPct(effData.efficiency_score);
 }
 
 // Ensure the interval clears correctly on hot reloads

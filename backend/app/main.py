@@ -13,6 +13,7 @@ from app.routes.metrics import router as metrics_router
 from app.routes.sessions import router as sessions_router
 from app.routes.telemetry import router as telemetry_router
 from app.routes.connectors import router as connectors_router
+from app.routes.token_analytics import router as token_analytics_router
 from app.settings import settings
 
 
@@ -58,6 +59,7 @@ def create_app() -> FastAPI:
     app.include_router(sessions_router)
     app.include_router(telemetry_router)
     app.include_router(connectors_router)
+    app.include_router(token_analytics_router)
 
     @app.on_event("startup")
     def ensure_database_tables() -> None:

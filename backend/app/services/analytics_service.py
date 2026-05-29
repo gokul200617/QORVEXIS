@@ -347,6 +347,7 @@ def get_recovery_metrics(db: Session) -> dict:
     from app.reliability.reconciliation import reconciliation_registry
 
     return {
+        "status": "healthy",
         **recovery_registry.snapshot(),
         "reconciliation": reconciliation_registry.snapshot(),
         "stale_requests": detect_stale_requests(db),

@@ -1,6 +1,9 @@
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+ENV_PATH = Path(__file__).parent.parent / ".env"
 
 
 class Settings(BaseSettings):
@@ -28,7 +31,7 @@ class Settings(BaseSettings):
     historical_metrics_window: int = 240
     historical_metrics_file: str = "operational_history.jsonl"
     stale_execution_seconds: int = 300
-    request_timeout_seconds: int = 120
+    request_timeout_seconds: int = 600
     queue_max_depth: int = 2500
     queue_enqueue_timeout_seconds: int = 2
     queue_drain_timeout_seconds: int = 300
@@ -44,7 +47,7 @@ class Settings(BaseSettings):
     telemetry_queue_pressure_threshold: float = 0.80
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=str(ENV_PATH),
         env_file_encoding="utf-8",
         extra="ignore",
     )

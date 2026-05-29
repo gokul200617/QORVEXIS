@@ -1,0 +1,26 @@
+{
+  "results": {
+    "backend_startup": "PASS",
+    "orchestration": "PASS",
+    "reliability": "PASS",
+    "connector_framework": "PASS",
+    "openai_connector": "PASS",
+    "token_telemetry": "PASS",
+    "token_intelligence": "PASS",
+    "deterministic_recs": "PASS",
+    "trend_analytics": "PASS",
+    "database_safety": "PASS",
+    "failure_isolation": "PASS",
+    "performance": "FAIL",
+    "api_validation": "PASS",
+    "security": "PASS",
+    "load_testing": "FAIL",
+    "intelligence_quality": "PASS"
+  },
+  "errors": [
+    {
+      "category": "performance",
+      "message": "50 requests took 124.17s, too slow."
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 from app.models.inference_session import InferenceSession
-from app.models.optimization_recommendation import OptimizationRecommendation
+from app.token_intelligence.models.optimization_recommendation import OptimizationRecommendation
 from app.models.request_lifecycle_event import RequestLifecycleEvent
 from app.models.request_log import RequestLog
 from app.models.telemetry_snapshot import TelemetrySnapshotRecord
@@ -9,6 +9,9 @@ from app.connectors.models.connector_instance import ConnectorInstance
 from app.connectors.models.connector_sync_event import ConnectorSyncEvent
 from app.connectors.models.connector_credentials import ConnectorCredentialMetadata
 
+# Phase 8C - Token Intelligence Models
+from app.token_intelligence.models.token_tracking import TokenTelemetryRecord, TokenSnapshotRecord
+from app.token_intelligence.models.workload_signature import WorkloadSignatureRecord
 __all__ = [
     "InferenceSession",
     "OptimizationRecommendation",
@@ -18,4 +21,7 @@ __all__ = [
     "ConnectorInstance",
     "ConnectorSyncEvent",
     "ConnectorCredentialMetadata",
+    "TokenTelemetryRecord",
+    "TokenSnapshotRecord",
+    "WorkloadSignatureRecord",
 ]
