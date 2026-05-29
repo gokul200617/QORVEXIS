@@ -87,3 +87,32 @@ class NormalizedTelemetry:
             "health_score":             self.health_score,
             "reliability_score":        self.reliability_score,
         }
+
+
+@dataclass
+class NormalizedProviderTelemetry:
+    """Unified telemetry representation for all AI Model Providers (OpenAI, Groq, Gemini)."""
+    provider: str
+    model: str
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+    latency: float
+    estimated_cost: float
+    request_count: int
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    workload_signature: str | None = None
+
+    def to_dict(self) -> dict:
+        return {
+            "provider": self.provider,
+            "model": self.model,
+            "prompt_tokens": self.prompt_tokens,
+            "completion_tokens": self.completion_tokens,
+            "total_tokens": self.total_tokens,
+            "latency": self.latency,
+            "estimated_cost": self.estimated_cost,
+            "request_count": self.request_count,
+            "timestamp": self.timestamp.isoformat(),
+            "workload_signature": self.workload_signature,
+        }

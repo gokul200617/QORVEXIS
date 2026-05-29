@@ -1,21 +1,29 @@
+# Environment variables
 .env
-.venv
+.env.local
+.env.production
+.env.development
+backend/.env
+
+# Keys and credentials
+*.key
+*.pem
+credentials.json
+service_account.json
+
+# Test and script files
+test_*.py
+
+# Python
 __pycache__/
 *.pyc
-.env
-backend/.env
-__pycache__/
-venv/
-node_modules/
-.env
-backend/.env
-__pycache__/
-venv/
-node_modules/
-__pycache__/
-*.pyc
-.env
+.venv/
 venv/
 backend/test.db
+
+# Node
+node_modules/
+
+# Other
 taste-skill-main/
 frontend.txt

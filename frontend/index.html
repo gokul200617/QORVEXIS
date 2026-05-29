@@ -112,12 +112,22 @@
         </svg>
         <span>Cloud Intelligence</span>
       </a>
+      <a href="#" class="nav-item" data-section="business" id="nav-business">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+          <rect x="3" y="11" width="3" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="8.5" y="7" width="3" height="10" rx="1" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="14" y="3" width="3" height="14" rx="1" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M3 5l4-2 4 3 4-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>Business Intelligence</span>
+      </a>
     </nav>
+
 
     <div class="sidebar-footer">
       <div class="env-badge">
         <span class="env-dot"></span>
-        <span id="apiTarget">localhost</span>
+        <span id="apiTarget">api.qorvexis.com</span>
       </div>
     </div>
   </aside>
@@ -956,6 +966,245 @@
             </div>
             <div class="stat-stack" id="awsAnalyticsPanel" style="margin-top:1rem;">
               <span class="empty-state">Connect an AWS account to see analytics.</span>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ════════════════════════════════════════════════════════════
+           SECTION: Providers
+      ═══════════════════════════════════════════════════════════════ -->
+      <section class="view" id="view-providers" style="display:none;">
+        <div class="view-header">
+          <div>
+            <p class="view-eyebrow">Multi-Provider Intelligence</p>
+            <h1 class="view-title">AI Providers</h1>
+          </div>
+          <div class="view-meta">
+            <button class="btn-secondary" id="providersRefreshBtn">Sync now</button>
+          </div>
+        </div>
+
+        <!-- ── Provider KPI Row ──────────────────────────── -->
+        <div class="dash-grid dash-grid-4" id="providersKpiGrid" style="margin-bottom:2rem;">
+          <div class="panel kpi-mini">
+            <div class="kpi-mini-label">Total AI Spend</div>
+            <div class="kpi-mini-value accent-yellow" id="providerTotalSpend">--</div>
+            <div class="kpi-mini-pressure">all time</div>
+          </div>
+          <div class="panel kpi-mini">
+            <div class="kpi-mini-label">Active Providers</div>
+            <div class="kpi-mini-value accent-blue" id="providerActiveCount">--</div>
+            <div class="kpi-mini-pressure">connected</div>
+          </div>
+          <div class="panel kpi-mini">
+            <div class="kpi-mini-label">Top Provider</div>
+            <div class="kpi-mini-value" id="providerTopName" style="text-transform: capitalize;">--</div>
+            <div class="kpi-mini-pressure">by volume</div>
+          </div>
+          <div class="panel kpi-mini">
+            <div class="kpi-mini-label">Optimization Score</div>
+            <div class="kpi-mini-value accent-emerald" id="providerOptScore">--</div>
+            <div class="kpi-mini-pressure">routing efficiency</div>
+          </div>
+        </div>
+
+        <!-- ── Provider Visibility Matrix (Phase 10A) ─────────────── -->
+        <div class="panel" style="margin-bottom:2rem;">
+          <div class="panel-header">
+            <h2 class="panel-title">Provider Telemetry Visibility</h2>
+            <span class="panel-badge" id="visibilitySyncStatus">Idle</span>
+          </div>
+          <div class="table-container" style="margin-top:1rem;overflow-x:auto;">
+            <table class="data-table" style="width:100%;text-align:left;border-collapse:collapse;">
+              <thead>
+                <tr style="border-bottom:1px solid var(--border);color:var(--text-muted);font-size:.875rem;">
+                  <th style="padding:1rem .5rem;">Provider</th>
+                  <th style="padding:1rem .5rem;">Visibility</th>
+                  <th style="padding:1rem .5rem;">Source</th>
+                  <th style="padding:1rem .5rem;">Confidence</th>
+                  <th style="padding:1rem .5rem;">Records</th>
+                  <th style="padding:1rem .5rem;">Last Sync</th>
+                  <th style="padding:1rem .5rem;">Limitation</th>
+                </tr>
+              </thead>
+              <tbody id="providerVisibilityTable">
+                <tr><td colspan="7" class="empty-state">No telemetry visibility data available.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ── Provider Comparison Matrix ─────────────── -->
+        <div class="panel" style="margin-bottom:2rem;">
+          <div class="panel-header">
+            <h2 class="panel-title">Provider Comparison Matrix</h2>
+          </div>
+          <div class="table-container" style="margin-top:1rem;overflow-x:auto;">
+            <table class="data-table" style="width:100%;text-align:left;border-collapse:collapse;">
+              <thead>
+                <tr style="border-bottom:1px solid var(--border);color:var(--text-muted);font-size:.875rem;">
+                  <th style="padding:1rem .5rem;">Provider</th>
+                  <th style="padding:1rem .5rem;">Spend</th>
+                  <th style="padding:1rem .5rem;">Requests</th>
+                  <th style="padding:1rem .5rem;">Avg Latency</th>
+                  <th style="padding:1rem .5rem;">Est. Cost per 1K</th>
+                  <th style="padding:1rem .5rem;">Efficiency</th>
+                </tr>
+              </thead>
+              <tbody id="providerComparisonTable">
+                <tr><td colspan="6" class="empty-state">No provider data available.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ── Optimization Center ─────────────── -->
+        <div class="dash-grid dash-grid-2" style="margin-bottom:2rem;">
+          <div class="panel">
+            <div class="panel-header">
+              <h2 class="panel-title">Optimization Center</h2>
+              <span class="panel-badge" id="providerRecCount">0 recommendations</span>
+            </div>
+            <div id="providerRecommendationsList" class="data-list" style="margin-top:1rem;">
+              <span class="empty-state">No optimization opportunities detected.</span>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <h2 class="panel-title">Workload Attribution</h2>
+            </div>
+            <div id="providerWorkloadsList" class="data-list" style="margin-top:1rem;">
+              <span class="empty-state">No workload data available.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════════════════════════════════════════════════════════
+           SECTION: Business Intelligence — Phase 10
+      ═══════════════════════════════════════════════════════════════ -->
+      <section class="view" id="view-business">
+        <div class="view-header">
+          <div>
+            <p class="view-eyebrow">Business Attribution</p>
+            <h1 class="view-title">Business Intelligence</h1>
+          </div>
+          <div class="view-meta">
+            <span class="last-refresh-label">Real traffic analytics</span>
+            <button class="btn-secondary" id="bizRefreshBtn">Sync now</button>
+          </div>
+        </div>
+
+        <!-- ── Executive KPI Row ──────────────────────────────────────── -->
+        <div class="dash-grid dash-grid-4" style="margin-bottom:2rem;">
+          <div class="panel kpi-mini">
+            <div class="kpi-mini-label">Total AI Spend</div>
+            <div class="kpi-mini-value accent-yellow" id="bizTotalSpend">--</div>
+            <div class="kpi-mini-pressure">deduplicated true cost</div>
+          </div>
+          <div class="panel kpi-mini">
+            <div class="kpi-mini-label">Gateway Spend</div>
+            <div class="kpi-mini-value accent-blue" id="bizGatewaySpend">--</div>
+            <div class="kpi-mini-pressure" id="bizGatewayRequests">-- requests</div>
+          </div>
+          <div class="panel kpi-mini">
+            <div class="kpi-mini-label">Provider Spend</div>
+            <div class="kpi-mini-value accent-emerald" id="bizProviderSpend">--</div>
+            <div class="kpi-mini-pressure">from API sync</div>
+          </div>
+          <div class="panel kpi-mini">
+            <div class="kpi-mini-label">Observed Spend</div>
+            <div class="kpi-mini-value" id="bizObservedSpend">--</div>
+            <div class="kpi-mini-pressure">gateway + token usage</div>
+          </div>
+        </div>
+        
+        <div class="dash-grid dash-grid-2" style="margin-bottom:2rem;">
+          <div class="panel kpi-mini">
+            <div class="kpi-mini-label">Top Cost Driver</div>
+            <div class="kpi-mini-value" id="bizTopCostDriver" style="font-size:1rem;">--</div>
+            <div class="kpi-mini-pressure">by workload</div>
+          </div>
+          <div class="panel kpi-mini">
+            <div class="kpi-mini-label">Savings Opportunity</div>
+            <div class="kpi-mini-value accent-emerald" id="bizSavingsOpp">--</div>
+            <div class="kpi-mini-pressure">deterministic rules</div>
+          </div>
+        </div>
+
+        <!-- ── Spend Forecast Row ─────────────────────────────────────── -->
+        <div class="panel" style="margin-bottom:2rem;">
+          <div class="panel-header">
+            <h2 class="panel-title">Spend Forecast</h2>
+            <span class="panel-badge" id="bizForecastConfidence">--</span>
+          </div>
+          <div class="dash-grid dash-grid-4" style="margin-top:1.25rem;gap:1rem;">
+            <div style="text-align:center;padding:1rem;background:rgba(255,255,255,0.03);border-radius:8px;">
+              <div style="font-size:.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem;">Avg Daily</div>
+              <div style="font-size:1.5rem;font-weight:700;" id="bizAvgDaily">--</div>
+            </div>
+            <div style="text-align:center;padding:1rem;background:rgba(255,255,255,0.03);border-radius:8px;">
+              <div style="font-size:.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem;">7-Day Forecast</div>
+              <div style="font-size:1.5rem;font-weight:700;" id="bizForecast7d">--</div>
+            </div>
+            <div style="text-align:center;padding:1rem;background:rgba(255,255,255,0.03);border-radius:8px;">
+              <div style="font-size:.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem;">30-Day Forecast</div>
+              <div style="font-size:1.5rem;font-weight:700;color:var(--accent);" id="bizForecast30d">--</div>
+            </div>
+            <div style="text-align:center;padding:1rem;background:rgba(255,255,255,0.03);border-radius:8px;">
+              <div style="font-size:.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem;">90-Day Forecast</div>
+              <div style="font-size:1.5rem;font-weight:700;" id="bizForecast90d">--</div>
+            </div>
+          </div>
+          <div style="margin-top:1rem;font-size:.8rem;color:var(--text-muted);">
+            Trend: <span id="bizTrendDir" style="font-weight:600;">--</span> &nbsp;|&nbsp;
+            Based on <span id="bizDataPoints">0</span> days of data
+          </div>
+        </div>
+
+        <!-- ── Workloads + Recommendations ───────────────────────────── -->
+        <div class="dash-grid dash-grid-2" style="margin-bottom:2rem;">
+          <div class="panel">
+            <div class="panel-header">
+              <h2 class="panel-title">Workload Attribution</h2>
+              <span class="panel-badge" id="bizWorkloadCount">0 workloads</span>
+            </div>
+            <div id="bizWorkloadList" class="data-list" style="margin-top:1rem;max-height:360px;overflow-y:auto;">
+              <span class="empty-state">Route requests through the AI Gateway with <code>workload_id</code> to unlock attribution.</span>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header">
+              <h2 class="panel-title">Optimization Recommendations</h2>
+              <span class="panel-badge" id="bizRecCount">0 recommendations</span>
+            </div>
+            <div id="bizRecList" class="data-list" style="margin-top:1rem;max-height:360px;overflow-y:auto;">
+              <span class="empty-state">No recommendations yet.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Teams + Customers ──────────────────────────────────────── -->
+        <div class="dash-grid dash-grid-2">
+          <div class="panel">
+            <div class="panel-header">
+              <h2 class="panel-title">Team Attribution</h2>
+              <span class="panel-badge" id="bizTeamCount">0 teams</span>
+            </div>
+            <div id="bizTeamList" class="data-list" style="margin-top:1rem;max-height:320px;overflow-y:auto;">
+              <span class="empty-state">Tag requests with <code>team_id</code> via the AI Gateway to see team spend.</span>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header">
+              <h2 class="panel-title">Customer Attribution</h2>
+              <span class="panel-badge" id="bizCustomerCount">0 customers</span>
+            </div>
+            <div id="bizCustomerList" class="data-list" style="margin-top:1rem;max-height:320px;overflow-y:auto;">
+              <span class="empty-state">Tag requests with <code>customer_id</code> via the AI Gateway to track per-customer costs.</span>
             </div>
           </div>
         </div>

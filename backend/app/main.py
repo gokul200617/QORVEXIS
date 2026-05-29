@@ -61,6 +61,15 @@ def create_app() -> FastAPI:
     app.include_router(connectors_router)
     app.include_router(token_analytics_router)
 
+    from app.routes.providers import router as providers_router
+    app.include_router(providers_router)
+
+    from app.gateway.gateway_router import router as gateway_router
+    app.include_router(gateway_router)
+
+    from app.routes.business import router as business_router
+    app.include_router(business_router)
+
     @app.on_event("startup")
     def ensure_database_tables() -> None:
         logger.info("api.startup.database_initialize")
@@ -89,6 +98,15 @@ def create_app() -> FastAPI:
         from app.connectors.aws.aws_usage_service import aws_usage_service  # noqa: F401
         from app.connectors.aws.aws_connector_summary_service import aws_connector_summary_service  # noqa: F401
         logger.info("phase8d.aws_infrastructure_intelligence.ready")
+
+        # Phase 9 — Multi-Provider Intelligence
+        from app.connectors.services.provider_intelligence_service import provider_intelligence_service  # noqa: F401
+        logger.info("phase9.multi_provider_intelligence.ready")
+
+        # Phase 10 — AI Gateway & Business Intelligence
+        from app.gateway.gateway_telemetry import gateway_telemetry  # noqa: F401
+        from app.business.business_intelligence_service import business_intelligence_service  # noqa: F401
+        logger.info("phase10.ai_gateway.business_intelligence.ready")
 
     @app.get("/health")
     def health_check() -> dict[str, str | None]:

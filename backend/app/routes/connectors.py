@@ -295,3 +295,143 @@ def get_aws_summary():
             "available":                   False,
             "reason":                      f"AWS summary unavailable: {exc}",
         }
+
+
+# ── Groq & Gemini Intelligence Endpoints — Phase 9 ───────────────────────────
+
+class GroqConnectRequest(BaseModel):
+    api_key: str
+    name: str = "Groq Production"
+    simulation_mode: bool = False
+
+@router.post("/groq/connect", response_model=ConnectorResponse)
+def connect_groq(req: GroqConnectRequest, db: Session = Depends(get_db)):
+    """Register and validate a new Groq connector."""
+    try:
+        from app.connectors.groq.groq_connector import GroqConnector
+        from app.connectors.services.connector_validation_service import connector_validation_service
+
+        connector_id = f"groq-{int(datetime.now().timestamp())}"
+
+        connector = GroqConnector(
+            connector_id=connector_id,
+            name=req.name,
+            api_key=req.api_key,
+            simulation_mode=req.simulation_mode,
+        )
+
+        passed = connector_validation_service.validate(connector)
+        if not passed and not req.simulation_mode:
+            raise HTTPException(status_code=401, detail="Invalid Groq API Key.")
+
+        connector_registry.register(connector)
+
+        masked = f"gsk-...{req.api_key[-4:]}" if len(req.api_key) > 4 else "gsk-...xxxx"
+        create_req = ConnectorCreateRequest(
+            connector_id=connector_id,
+            name=req.name,
+            connector_type=ConnectorType.AI_PROVIDER,
+            description="Groq connection",
+            auth_config=AuthConfigSchema(
+                auth_type=AuthType.API_KEY,
+                masked_identifier=masked,
+            ),
+        )
+        return connector_service.create_connector(db, create_req)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("groq.connect.error detail=%s", exc)
+        raise HTTPException(status_code=500, detail=f"Groq registration failed: {exc}")
+
+
+class GeminiConnectRequest(BaseModel):
+    api_key: str
+    name: str = "Gemini Production"
+    simulation_mode: bool = False
+
+@router.post("/gemini/connect", response_model=ConnectorResponse)
+def connect_gemini(req: GeminiConnectRequest, db: Session = Depends(get_db)):
+    """Register and validate a new Gemini connector."""
+    try:
+        from app.connectors.gemini.gemini_connector import GeminiConnector
+        from app.connectors.services.connector_validation_service import connector_validation_service
+
+        connector_id = f"gemini-{int(datetime.now().timestamp())}"
+
+        connector = GeminiConnector(
+            connector_id=connector_id,
+            name=req.name,
+            api_key=req.api_key,
+            simulation_mode=req.simulation_mode,
+        )
+
+        passed = connector_validation_service.validate(connector)
+        if not passed and not req.simulation_mode:
+            raise HTTPException(status_code=401, detail="Invalid Gemini API Key.")
+
+        connector_registry.register(connector)
+
+        masked = f"AIz-...{req.api_key[-4:]}" if len(req.api_key) > 4 else "AIz-...xxxx"
+        create_req = ConnectorCreateRequest(
+            connector_id=connector_id,
+            name=req.name,
+            connector_type=ConnectorType.AI_PROVIDER,
+            description="Gemini connection",
+            auth_config=AuthConfigSchema(
+                auth_type=AuthType.API_KEY,
+                masked_identifier=masked,
+            ),
+        )
+        return connector_service.create_connector(db, create_req)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("gemini.connect.error detail=%s", exc)
+        raise HTTPException(status_code=500, detail=f"Gemini registration failed: {exc}")
+
+
+class OpenRouterConnectRequest(BaseModel):
+    api_key: str
+    name: str = "OpenRouter Production"
+    simulation_mode: bool = False
+
+@router.post("/openrouter/connect", response_model=ConnectorResponse)
+def connect_openrouter(req: OpenRouterConnectRequest, db: Session = Depends(get_db)):
+    """Register and validate a new OpenRouter connector."""
+    try:
+        from app.connectors.openrouter.openrouter_connector import OpenRouterConnector
+        from app.connectors.services.connector_validation_service import connector_validation_service
+
+        connector_id = f"openrouter-{int(datetime.now().timestamp())}"
+
+        connector = OpenRouterConnector(
+            connector_id=connector_id,
+            name=req.name,
+            api_key=req.api_key,
+            simulation_mode=req.simulation_mode,
+        )
+
+        passed = connector_validation_service.validate(connector)
+        if not passed and not req.simulation_mode:
+            raise HTTPException(status_code=401, detail="Invalid OpenRouter API Key.")
+
+        connector_registry.register(connector)
+
+        masked = f"sk-or-v1-...{req.api_key[-4:]}" if len(req.api_key) > 4 else "sk-or-v1-...xxxx"
+        create_req = ConnectorCreateRequest(
+            connector_id=connector_id,
+            name=req.name,
+            connector_type=ConnectorType.AI_PROVIDER,
+            description="OpenRouter connection",
+            auth_config=AuthConfigSchema(
+                auth_type=AuthType.API_KEY,
+                masked_identifier=masked,
+            ),
+        )
+        return connector_service.create_connector(db, create_req)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("openrouter.connect.error detail=%s", exc)
+        raise HTTPException(status_code=500, detail=f"OpenRouter registration failed: {exc}")

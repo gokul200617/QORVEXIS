@@ -4,7 +4,8 @@
    All field names verified against live backend responses.
    â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
-const API_BASE_URL = "http://127.0.0.1:8000";
+const isDev = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
+const API_BASE_URL = isDev ? "http://127.0.0.1:8000" : "https://api.qorvexis.com";
 
 // â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let requestCount       = 0;
@@ -1646,4 +1647,350 @@ window.addEventListener("beforeunload", () => {
     window._qorvexisAWSInterval = setInterval(fetchAWSSummary, 60000);
   }
 })();
+
+// ── Phase 9: Providers Dashboard Logic ────────────────────────────────────────
+
+const providersRefreshBtn = document.getElementById("providersRefreshBtn");
+const providerTotalSpend = document.getElementById("providerTotalSpend");
+const providerActiveCount = document.getElementById("providerActiveCount");
+const providerTopName = document.getElementById("providerTopName");
+const providerOptScore = document.getElementById("providerOptScore");
+
+const providerComparisonTable = document.getElementById("providerComparisonTable");
+const providerRecommendationsList = document.getElementById("providerRecommendationsList");
+const providerWorkloadsList = document.getElementById("providerWorkloadsList");
+const providerRecCount = document.getElementById("providerRecCount");
+
+if (providersRefreshBtn) {
+  providersRefreshBtn.addEventListener("click", async () => {
+    providersRefreshBtn.classList.add("loading");
+    providersRefreshBtn.textContent = "Syncing...";
+    try {
+      await apiClient.post("/providers/sync", {});
+    } catch (e) {
+      console.warn("Manual sync failed", e);
+    }
+    
+    await fetchProviderIntelligence().finally(() => {
+      providersRefreshBtn.classList.remove("loading");
+      providersRefreshBtn.textContent = "Sync now";
+    });
+  });
+}
+
+async function fetchProviderIntelligence() {
+  const [summary, comp, recs, workloads, vis] = await Promise.all([
+    apiClient.get("/providers/summary"),
+    apiClient.get("/providers/comparison"),
+    apiClient.get("/providers/recommendations"),
+    apiClient.get("/providers/workloads"),
+    apiClient.get("/providers/visibility")
+  ]);
+
+  if (!summary._error) renderProviderSummary(summary);
+  if (!comp._error) renderProviderComparison(comp);
+  if (!recs._error) renderProviderRecommendations(recs);
+  if (!workloads._error) renderProviderWorkloads(workloads);
+  if (!vis._error) renderProviderVisibility(vis);
+}
+
+function renderProviderSummary(summary) {
+  if (providerTotalSpend) providerTotalSpend.textContent = fmtUsd(summary.total_ai_spend || 0);
+  if (providerActiveCount) providerActiveCount.textContent = summary.active_providers || 0;
+  if (providerTopName) providerTopName.textContent = summary.top_provider || "None";
+  if (providerOptScore) providerOptScore.textContent = `${summary.optimization_score || 0}/100`;
+}
+
+function renderProviderComparison(comp) {
+  if (!providerComparisonTable) return;
+  if (!comp || comp.length === 0) {
+    providerComparisonTable.innerHTML = `<tr><td colspan="6" class="empty-state">No provider data available.</td></tr>`;
+    return;
+  }
+  
+  providerComparisonTable.innerHTML = comp.map(p => `
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:1rem .5rem;text-transform:capitalize;font-weight:600;">${escapeHtml(p.provider)}</td>
+      <td style="padding:1rem .5rem;">${fmtUsd(p.spend)}</td>
+      <td style="padding:1rem .5rem;">${p.requests}</td>
+      <td style="padding:1rem .5rem;">${p.latency_ms.toFixed(0)} ms</td>
+      <td style="padding:1rem .5rem;">${fmtUsd(p.cost_per_1k)}</td>
+      <td style="padding:1rem .5rem;color:${p.reliability_score > 90 ? 'var(--emerald)' : 'var(--text-muted)'}">${p.reliability_score.toFixed(0)}/100</td>
+    </tr>
+  `).join("");
+}
+
+function renderProviderVisibility(vis) {
+  const table = document.getElementById("providerVisibilityTable");
+  const statusBadge = document.getElementById("visibilitySyncStatus");
+  if (!table) return;
+
+  if (statusBadge && vis.sync_status) {
+    statusBadge.textContent = `Sync: ${vis.sync_status.sync_status} (${vis.sync_status.sync_errors} errors)`;
+    statusBadge.className = `panel-badge ${vis.sync_status.sync_errors > 0 ? 'health-warn' : (vis.sync_status.sync_status === 'running' ? 'health-ok' : '')}`;
+  }
+
+  if (!vis.providers || vis.providers.length === 0) {
+    table.innerHTML = `<tr><td colspan="7" class="empty-state">No telemetry visibility data available.</td></tr>`;
+    return;
+  }
+
+  table.innerHTML = vis.providers.map(p => {
+    let lastSyncStr = "Never";
+    if (p.last_sync) {
+        const d = new Date(p.last_sync);
+        lastSyncStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' ' + d.toLocaleDateString();
+    }
+    return `
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:1rem .5rem;font-weight:600;">${escapeHtml(p.provider)}</td>
+      <td style="padding:1rem .5rem;color:${p.visibility_pct === 100 ? 'var(--emerald)' : 'var(--accent)'}">${p.visibility_pct}%</td>
+      <td style="padding:1rem .5rem;">${escapeHtml(p.source)}</td>
+      <td style="padding:1rem .5rem;font-size:.85em;color:var(--text-muted);">${escapeHtml(p.confidence)}</td>
+      <td style="padding:1rem .5rem;font-size:.85em;color:var(--text-primary);">${p.records || 0}</td>
+      <td style="padding:1rem .5rem;font-size:.85em;color:var(--text-muted);">${lastSyncStr}</td>
+      <td style="padding:1rem .5rem;font-size:.85em;color:var(--text-muted);max-width:250px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${p.limitation || 'None'}">${p.limitation ? escapeHtml(p.limitation) : '<span style="opacity:0.5">None</span>'}</td>
+    </tr>
+  `}).join("");
+}
+
+function renderProviderRecommendations(recs) {
+  if (!providerRecommendationsList) return;
+  if (providerRecCount) providerRecCount.textContent = `${recs.length} recommendation${recs.length !== 1 ? 's' : ''}`;
+  
+  if (!recs || recs.length === 0) {
+    providerRecommendationsList.innerHTML = `<span class="empty-state">No optimization opportunities detected.</span>`;
+    return;
+  }
+
+  providerRecommendationsList.innerHTML = recs.map(r => `
+    <div class="data-row" style="border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+        <strong style="color:var(--text-primary);font-size:.9rem;">${escapeHtml(r.workload)}</strong>
+        <span class="panel-badge ${r.type === 'provider_migration' ? 'health-warn' : 'health-ok'}">${r.type.replace('_', ' ')}</span>
+      </div>
+      <div style="font-size:.8rem;color:var(--text-muted);margin-bottom:8px;">
+        ${escapeHtml(r.rule)}
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:.8rem;">
+        <span style="color:var(--text-primary);">â†’ ${escapeHtml(r.recommendation)}</span>
+        <strong style="color:var(--emerald);">Save ${fmtUsd(r.estimated_savings)}</strong>
+      </div>
+    </div>
+  `).join("");
+}
+
+function renderProviderWorkloads(workloads) {
+  if (!providerWorkloadsList) return;
+  if (!workloads || workloads.length === 0) {
+    providerWorkloadsList.innerHTML = `<span class="empty-state">No workload data available.</span>`;
+    return;
+  }
+
+  providerWorkloadsList.innerHTML = workloads.map(w => `
+    <div class="data-row" style="border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:8px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+        <strong style="font-size:.85rem;">${escapeHtml(w.category)}</strong>
+        <span style="font-size:.85rem;color:var(--text-primary);">${fmtUsd(w.spend)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:.8rem;color:var(--text-muted);">
+        <span>${escapeHtml(w.provider)} &middot; ${escapeHtml(w.model)}</span>
+        <span>${w.requests} reqs &middot; ${w.avg_latency.toFixed(0)} ms</span>
+      </div>
+    </div>
+  `).join("");
+}
+
+// Initial fetch
+fetchProviderIntelligence();
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Phase 10: Business Intelligence Dashboard
+// ══════════════════════════════════════════════════════════════════════════════
+
+const bizRefreshBtn       = document.getElementById("bizRefreshBtn");
+const bizTotalSpend       = document.getElementById("bizTotalSpend");
+const bizGatewayRequests  = document.getElementById("bizGatewayRequests");
+const bizTopCostDriver    = document.getElementById("bizTopCostDriver");
+const bizSavingsOpp       = document.getElementById("bizSavingsOpp");
+const bizForecastConfidence = document.getElementById("bizForecastConfidence");
+const bizAvgDaily         = document.getElementById("bizAvgDaily");
+const bizForecast7d       = document.getElementById("bizForecast7d");
+const bizForecast30d      = document.getElementById("bizForecast30d");
+const bizForecast90d      = document.getElementById("bizForecast90d");
+const bizTrendDir         = document.getElementById("bizTrendDir");
+const bizDataPoints       = document.getElementById("bizDataPoints");
+const bizWorkloadList     = document.getElementById("bizWorkloadList");
+const bizWorkloadCount    = document.getElementById("bizWorkloadCount");
+const bizRecList          = document.getElementById("bizRecList");
+const bizRecCount         = document.getElementById("bizRecCount");
+const bizTeamList         = document.getElementById("bizTeamList");
+const bizTeamCount        = document.getElementById("bizTeamCount");
+const bizCustomerList     = document.getElementById("bizCustomerList");
+const bizCustomerCount    = document.getElementById("bizCustomerCount");
+
+if (bizRefreshBtn) {
+  bizRefreshBtn.addEventListener("click", async () => {
+    bizRefreshBtn.classList.add("loading");
+    bizRefreshBtn.textContent = "Syncing...";
+    try {
+      await apiClient.post("/providers/sync", {});
+    } catch (e) {
+      console.warn("Manual BI sync failed", e);
+    }
+    
+    await fetchBusinessIntelligence().finally(() => {
+      bizRefreshBtn.classList.remove("loading");
+      bizRefreshBtn.textContent = "Sync now";
+    });
+  });
+}
+
+async function fetchBusinessIntelligence() {
+  const [summary, workloads, teams, customers, forecast, recs] = await Promise.all([
+    apiClient.get("/business/summary"),
+    apiClient.get("/business/workloads"),
+    apiClient.get("/business/teams"),
+    apiClient.get("/business/customers"),
+    apiClient.get("/business/forecast"),
+    apiClient.get("/business/recommendations"),
+  ]);
+
+  if (!summary._error) renderBizSummary(summary);
+  if (!forecast._error) renderBizForecast(forecast);
+  if (!workloads._error && Array.isArray(workloads)) renderBizWorkloads(workloads);
+  if (!recs._error && Array.isArray(recs)) renderBizRecommendations(recs);
+  if (!teams._error && Array.isArray(teams)) renderBizTeams(teams);
+  if (!customers._error && Array.isArray(customers)) renderBizCustomers(customers);
+}
+
+function renderBizSummary(s) {
+  const bizGatewaySpend = document.getElementById("bizGatewaySpend");
+  const bizProviderSpend = document.getElementById("bizProviderSpend");
+  const bizObservedSpend = document.getElementById("bizObservedSpend");
+  
+  if (bizTotalSpend)    bizTotalSpend.textContent    = fmtUsd(s.total_ai_spend || 0);
+  if (bizGatewayRequests) bizGatewayRequests.textContent = (s.gateway_requests || 0).toLocaleString() + " requests";
+  if (bizGatewaySpend) bizGatewaySpend.textContent = fmtUsd(s.gateway_spend || 0);
+  if (bizProviderSpend) bizProviderSpend.textContent = fmtUsd(s.provider_spend || 0);
+  if (bizObservedSpend) bizObservedSpend.textContent = fmtUsd(s.observed_spend || 0);
+  
+  if (bizTopCostDriver) bizTopCostDriver.textContent = s.top_cost_driver || "None";
+  if (bizSavingsOpp)    bizSavingsOpp.textContent    = fmtUsd(s.optimization_opportunity || 0);
+}
+
+function renderBizForecast(f) {
+  if (bizForecastConfidence) bizForecastConfidence.textContent = `Confidence: ${f.confidence || "low"}`;
+  if (bizAvgDaily)    bizAvgDaily.textContent    = fmtUsd(f.avg_daily_spend || 0);
+  if (bizForecast7d)  bizForecast7d.textContent  = fmtUsd(f.forecast_7d || 0);
+  if (bizForecast30d) bizForecast30d.textContent = fmtUsd(f.forecast_30d || 0);
+  if (bizForecast90d) bizForecast90d.textContent = fmtUsd(f.forecast_90d || 0);
+
+  const dir = f.trend_direction || "stable";
+  if (bizTrendDir) {
+    bizTrendDir.textContent = dir.charAt(0).toUpperCase() + dir.slice(1);
+    bizTrendDir.style.color = dir === "increasing" ? "var(--red, #ef4444)" : dir === "decreasing" ? "var(--emerald)" : "var(--text-muted)";
+  }
+  if (bizDataPoints) bizDataPoints.textContent = f.data_points || 0;
+}
+
+function renderBizWorkloads(workloads) {
+  if (!bizWorkloadList) return;
+  if (bizWorkloadCount) bizWorkloadCount.textContent = `${workloads.length} workload${workloads.length !== 1 ? "s" : ""}`;
+
+  if (!workloads.length) {
+    bizWorkloadList.innerHTML = `<span class="empty-state">Route requests through <code>POST /gateway/chat</code> with <code>workload_id</code> to unlock attribution.</span>`;
+    return;
+  }
+
+  // Sort by cost descending
+  const sorted = [...workloads].sort((a, b) => (b.monthly_cost || 0) - (a.monthly_cost || 0));
+  bizWorkloadList.innerHTML = sorted.map(w => `
+    <div class="data-row" style="border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+        <strong style="font-size:.9rem;">${escapeHtml(w.workload_name || w.workload_id)}</strong>
+        <span style="color:var(--accent);font-weight:700;">${fmtUsd(w.monthly_cost)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:.8rem;color:var(--text-muted);">
+        <span>${escapeHtml(w.provider)} &middot; ${escapeHtml(w.model)}</span>
+        <span>${(w.request_count || 0).toLocaleString()} reqs &middot; ${(w.avg_latency || 0).toFixed(0)} ms</span>
+      </div>
+    </div>
+  `).join("");
+}
+
+function renderBizRecommendations(recs) {
+  if (!bizRecList) return;
+  if (bizRecCount) bizRecCount.textContent = `${recs.length} recommendation${recs.length !== 1 ? "s" : ""}`;
+
+  if (!recs.length) {
+    bizRecList.innerHTML = `<span class="empty-state">No recommendations yet — more data needed.</span>`;
+    return;
+  }
+
+  const priorityColor = { high: "var(--red, #ef4444)", medium: "var(--yellow, #eab308)", low: "var(--text-muted)" };
+  bizRecList.innerHTML = recs.map(r => `
+    <div class="data-row" style="border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+        <strong style="font-size:.875rem;">${escapeHtml(r.workload)}</strong>
+        <span style="font-size:.75rem;padding:2px 8px;border-radius:4px;background:rgba(255,255,255,0.06);color:${priorityColor[r.priority] || "var(--text-muted)"};">${r.priority || "medium"}</span>
+      </div>
+      <div style="font-size:.8rem;color:var(--text-muted);margin-bottom:6px;">${escapeHtml(r.rule)}</div>
+      <div style="display:flex;justify-content:space-between;font-size:.8rem;">
+        <span style="color:var(--text-primary);">→ ${escapeHtml(r.recommendation)}</span>
+        <strong style="color:var(--emerald);">Save ${fmtUsd(r.estimated_savings)}/mo</strong>
+      </div>
+    </div>
+  `).join("");
+}
+
+function renderBizTeams(teams) {
+  if (!bizTeamList) return;
+  if (bizTeamCount) bizTeamCount.textContent = `${teams.length} team${teams.length !== 1 ? "s" : ""}`;
+
+  if (!teams.length) {
+    bizTeamList.innerHTML = `<span class="empty-state">Tag gateway requests with <code>team_id</code> to unlock team attribution.</span>`;
+    return;
+  }
+
+  bizTeamList.innerHTML = teams.map(t => `
+    <div class="data-row" style="border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+        <strong>${escapeHtml(t.team_name)}</strong>
+        <span style="font-weight:700;">${fmtUsd(t.monthly_cost)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:.8rem;color:var(--text-muted);">
+        <span>${(t.request_count || 0).toLocaleString()} requests</span>
+        <span style="color:var(--emerald);">Save ${fmtUsd(t.savings_opportunity)}</span>
+      </div>
+    </div>
+  `).join("");
+}
+
+function renderBizCustomers(customers) {
+  if (!bizCustomerList) return;
+  if (bizCustomerCount) bizCustomerCount.textContent = `${customers.length} customer${customers.length !== 1 ? "s" : ""}`;
+
+  if (!customers.length) {
+    bizCustomerList.innerHTML = `<span class="empty-state">Tag gateway requests with <code>customer_id</code> to track per-customer AI costs.</span>`;
+    return;
+  }
+
+  bizCustomerList.innerHTML = customers.map(c => `
+    <div class="data-row" style="border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+        <strong>${escapeHtml(c.customer_name)}</strong>
+        <span style="font-weight:700;">${fmtUsd(c.monthly_cost)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:.8rem;color:var(--text-muted);">
+        <span>${(c.requests || 0).toLocaleString()} requests</span>
+        <span>${(c.tokens || 0).toLocaleString()} tokens</span>
+      </div>
+    </div>
+  `).join("");
+}
+
+// Auto-fetch on page load
+fetchBusinessIntelligence();
+
 
