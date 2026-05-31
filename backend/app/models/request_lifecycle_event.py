@@ -8,6 +8,7 @@ from app.database.session import Base
 
 class RequestLifecycleEvent(Base):
     __tablename__ = "request_lifecycle_events"
+    organization_id: Mapped[str | None] = mapped_column(String(36), index=True, nullable=True)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     request_id: Mapped[int] = mapped_column(Integer, index=True, nullable=False)

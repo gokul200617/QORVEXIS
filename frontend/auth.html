@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Qorvexis — Sign In</title>
+  <meta name="description" content="Sign in to Qorvexis AI Infrastructure Control Plane." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #0a0a0f;
+      --surface:      #111118;
+      --surface2:     #1a1a24;
+      --border:       rgba(255,255,255,0.08);
+      --accent:       #6366f1;
+      --accent-glow:  rgba(99,102,241,0.30);
+      --text-primary: #f0f0f8;
+      --text-muted:   #6b7280;
+      --error:        #f87171;
+      --success:      #34d399;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'Geist', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text-primary);
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      position: relative;
+      overflow: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 50% at 20% 20%, rgba(99,102,241,0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 40% at 80% 80%, rgba(52,211,153,0.07) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+    }
+
+    .auth-card {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      max-width: 420px;
+      margin: 1.5rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2.5rem;
+      box-shadow:
+        0 0 0 1px rgba(99,102,241,0.1),
+        0 32px 64px rgba(0,0,0,0.5),
+        0 0 80px var(--accent-glow);
+      animation: cardIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(20px) scale(0.97); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 2rem;
+    }
+
+    .logo-mark {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 4px 16px var(--accent-glow);
+    }
+
+    .logo-text { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em; }
+
+    .tabs {
+      display: flex;
+      background: var(--surface2);
+      border-radius: 8px;
+      padding: 3px;
+      margin-bottom: 1.75rem;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 0.5rem 1rem;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 0.875rem;
+      font-weight: 500;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tab-btn.active {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 2px 8px var(--accent-glow);
+    }
+
+    .form-panel { display: none; }
+    .form-panel.active { display: block; }
+
+    .form-group { margin-bottom: 1rem; }
+
+    .form-label {
+      display: block;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-bottom: 0.4rem;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 0.72rem 0.875rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 0.9375rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+    }
+
+    .form-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    .form-input::placeholder { color: var(--text-muted); }
+
+    .btn-primary {
+      width: 100%;
+      padding: 0.8rem 1.5rem;
+      background: linear-gradient(135deg, #6366f1, #7c3aed);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 0.75rem;
+      transition: opacity 0.2s, transform 0.1s, box-shadow 0.2s;
+      box-shadow: 0 4px 16px var(--accent-glow);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .msg-box {
+      margin-top: 0.875rem;
+      padding: 0.5rem 0.875rem;
+      border-radius: 7px;
+      font-size: 0.8125rem;
+      text-align: center;
+      min-height: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .msg-box.error   { background: rgba(248,113,113,0.12); color: var(--error);   border: 1px solid rgba(248,113,113,0.2); }
+    .msg-box.success { background: rgba(52,211,153,0.12);  color: var(--success); border: 1px solid rgba(52,211,153,0.2); }
+    .msg-box.hidden  { display: none; }
+
+    .forgot-link {
+      display: block;
+      text-align: right;
+      font-size: 0.8rem;
+      color: var(--accent);
+      text-decoration: none;
+      margin-top: 0.25rem;
+      margin-bottom: 0.75rem;
+      cursor: pointer;
+    }
+
+    .auth-footer {
+      margin-top: 1.5rem;
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .dev-banner {
+      background: rgba(99,102,241,0.1);
+      border: 1px solid rgba(99,102,241,0.25);
+      border-radius: 8px;
+      padding: 0.625rem 0.875rem;
+      font-size: 0.78rem;
+      color: #a5b4fc;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="auth-card">
+    <div class="logo">
+      <div class="logo-mark">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <path d="M4 10h5M11 7l5 3-5 3" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <span class="logo-text">Qorvexis</span>
+    </div>
+
+    <!-- Dev mode notice removed -->
+
+    <div class="tabs" role="tablist">
+      <button class="tab-btn active" id="tabSignIn" onclick="switchTab('signin')">Sign In</button>
+      <button class="tab-btn"        id="tabSignUp" onclick="switchTab('signup')">Sign Up</button>
+    </div>
+
+    <!-- ── Sign In ─────────────────────────────────────────────────── -->
+    <div id="panelSignIn" class="form-panel active">
+      <div class="form-group">
+        <label class="form-label" for="siEmail">Email Address</label>
+        <input class="form-input" type="email" id="siEmail" placeholder="you@company.com" autocomplete="email" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="siPassword">Password</label>
+        <input class="form-input" type="password" id="siPassword" placeholder="••••••••" autocomplete="current-password" />
+      </div>
+      <a class="forgot-link" id="forgotLink">Forgot password?</a>
+      <button class="btn-primary" id="siBtn" onclick="doSignIn()">Sign In</button>
+      <div class="msg-box hidden" id="siMsg"></div>
+    </div>
+
+    <!-- ── Sign Up ─────────────────────────────────────────────────── -->
+    <div id="panelSignUp" class="form-panel">
+      <div class="form-group">
+        <label class="form-label" for="suName">Full Name</label>
+        <input class="form-input" type="text" id="suName" placeholder="Jane Smith" autocomplete="name" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="suEmail">Work Email</label>
+        <input class="form-input" type="email" id="suEmail" placeholder="you@company.com" autocomplete="email" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="suPassword">Password <span style="color:var(--text-muted);font-size:0.75rem;">(min. 8 chars)</span></label>
+        <input class="form-input" type="password" id="suPassword" placeholder="••••••••" autocomplete="new-password" />
+      </div>
+      <button class="btn-primary" id="suBtn" onclick="doSignUp()">Create Account</button>
+      <div class="msg-box hidden" id="suMsg"></div>
+    </div>
+
+    <div class="auth-footer">
+      By continuing you agree to the Qorvexis&nbsp;<a href="#" style="color:var(--accent);text-decoration:none;">Terms of Service</a>.
+    </div>
+  </div>
+
+<script>
+// ────────────────────────────────────────────────────────────────────────────
+//  Qorvexis Auth — completely standalone, no external blocking scripts
+//  Dev mode: any credentials work. Production mode: configure SUPABASE_* below.
+// ────────────────────────────────────────────────────────────────────────────
+
+// ── Configure Supabase here when you have credentials ───────────────────────
+const SUPABASE_URL      = "";   // e.g. "https://xyz.supabase.co"
+const SUPABASE_ANON_KEY = "";   // your anon/public key
+
+let sbClient = null;
+
+// ── Tab switching ─────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.getElementById("panelSignIn").classList.toggle("active", tab === "signin");
+  document.getElementById("panelSignUp").classList.toggle("active", tab === "signup");
+  document.getElementById("tabSignIn").classList.toggle("active", tab === "signin");
+  document.getElementById("tabSignUp").classList.toggle("active", tab === "signup");
+  clearMsg("siMsg");
+  clearMsg("suMsg");
+}
+
+// ── Messaging helpers ─────────────────────────────────────────────────────
+function showMsg(id, text, type) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className = "msg-box " + type;
+}
+function clearMsg(id) {
+  const el = document.getElementById(id);
+  el.className = "msg-box hidden";
+  el.textContent = "";
+}
+
+function setLoading(btnId, loading) {
+  const btn = document.getElementById(btnId);
+  btn.disabled = loading;
+  if (loading) {
+    btn.innerHTML = '<span class="spinner"></span> Please wait…';
+  } else {
+    btn.innerHTML = btnId === "siBtn" ? "Sign In" : "Create Account";
+  }
+}
+
+
+
+// ── Sign In ───────────────────────────────────────────────────────────────
+function doSignIn() {
+  const email    = document.getElementById("siEmail").value.trim();
+  const password = document.getElementById("siPassword").value;
+
+  if (!email || !password) {
+    showMsg("siMsg", "Please enter your email and password.", "error");
+    return;
+  }
+
+  setLoading("siBtn", true);
+  clearMsg("siMsg");
+  // Production: use Supabase
+  loadSupabase(function(sb) {
+    sb.auth.signInWithPassword({ email: email, password: password })
+      .then(function(result) {
+        if (result.error) throw result.error;
+        localStorage.setItem("qorvexis_access_token", result.data.session.access_token);
+        window.location.href = "index.html";
+      })
+      .catch(function(err) {
+        showMsg("siMsg", err.message || "Sign-in failed. Check your credentials.", "error");
+        setLoading("siBtn", false);
+      });
+  });
+}
+
+// ── Sign Up ───────────────────────────────────────────────────────────────
+function doSignUp() {
+  var email    = document.getElementById("suEmail").value.trim();
+  var password = document.getElementById("suPassword").value;
+  var name     = document.getElementById("suName").value.trim();
+
+  if (!email) {
+    showMsg("suMsg", "Please enter your email address.", "error");
+    return;
+  }
+  if (password.length < 8) {
+    showMsg("suMsg", "Password must be at least 8 characters.", "error");
+    return;
+  }
+
+  setLoading("suBtn", true);
+  clearMsg("suMsg");
+  // Production: use Supabase
+  loadSupabase(function(sb) {
+    sb.auth.signUp({
+      email: email,
+      password: password,
+      options: { data: { full_name: name } }
+    })
+    .then(function(result) {
+      if (result.error) throw result.error;
+      showMsg("suMsg", "Account created! Check your email to verify, then sign in.", "success");
+      setLoading("suBtn", false);
+    })
+    .catch(function(err) {
+      showMsg("suMsg", err.message || "Registration failed.", "error");
+      setLoading("suBtn", false);
+    });
+  });
+}
+
+// ── Forgot Password ───────────────────────────────────────────────────────
+document.getElementById("forgotLink").addEventListener("click", function() {
+  var email = document.getElementById("siEmail").value.trim();
+  if (!email) {
+    showMsg("siMsg", "Enter your email above first.", "error");
+    return;
+  }
+
+  loadSupabase(function(sb) {
+    sb.auth.resetPasswordForEmail(email).then(function(r) {
+      if (r.error) showMsg("siMsg", r.error.message, "error");
+      else showMsg("siMsg", "Password reset email sent! Check your inbox.", "success");
+    });
+  });
+});
+
+// ── Lazy-load Supabase JS ───────────────────────────────────────────────────
+function loadSupabase(callback) {
+  if (sbClient) { callback(sbClient); return; }
+  var script = document.createElement("script");
+  script.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js";
+  script.onload = function() {
+    sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    callback(sbClient);
+  };
+  script.onerror = function() {
+    showMsg("siMsg", "Could not load Supabase. Check your internet connection.", "error");
+    setLoading("siBtn", false);
+    setLoading("suBtn", false);
+  };
+  document.head.appendChild(script);
+}
+
+// ── Allow Enter key to submit ─────────────────────────────────────────────
+document.addEventListener("keydown", function(e) {
+  if (e.key !== "Enter") return;
+  var active = document.querySelector(".form-panel.active").id;
+  if (active === "panelSignIn") doSignIn();
+  else doSignUp();
+});
+
+// ── If already authenticated, skip to dashboard ───────────────────────────
+(function() {
+  var token = localStorage.getItem("qorvexis_access_token");
+  if (token) {
+    window.location.href = "index.html";
+  }
+})();
+</script>
+</body>
+</html>

@@ -13,6 +13,7 @@ from app.connectors.base.provider_capabilities import ProviderDataSource, Provid
 class ProviderUsageSnapshot(Base):
     """Historical snapshot of provider usage, aggregated daily/monthly."""
     __tablename__ = "provider_usage_snapshots"
+    organization_id: Mapped[str | None] = mapped_column(String(36), index=True, nullable=True)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
 

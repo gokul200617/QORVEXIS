@@ -12,8 +12,10 @@ def create_queued_request(
     session_id: str,
     prompt: str,
     priority: str,
+    org_id: str | None = None,
 ) -> RequestLog:
     request_log = RequestLog(
+        organization_id=org_id,
         session_id=session_id,
         prompt=prompt,
         response="",
@@ -35,6 +37,7 @@ def create_queued_request(
     db.refresh(request_log)
     db.add(
         RequestLifecycleEvent(
+            organization_id=org_id,
             request_id=request_log.id,
             state="queued",
             detail=f"priority={priority}",
@@ -51,8 +54,13 @@ def mark_request_success(
     queue_wait_ms: int,
     execution_duration_ms: int,
     cache_hit: bool = False,
+    org_id: str | None = None,
 ) -> None:
-    request_log = db.get(RequestLog, request_id)
+    q = db.query(RequestLog).filter(RequestLog.id == request_id)
+    if org_id:
+        q = q.filter(RequestLog.organization_id == org_id)
+        
+    request_log = q.first()
     if not request_log:
         return
 
@@ -69,6 +77,14 @@ def mark_request_success(
     request_log.provider_response_at = datetime.now(timezone.utc)
     request_log.cache_hit = cache_hit
     db.add(request_log)
+    
+    db.add(
+        RequestLifecycleEvent(
+            organization_id=org_id,
+            request_id=request_log.id,
+            state="success",
+        )
+    )
     db.commit()
 
 
@@ -78,8 +94,13 @@ def mark_request_failed(
     error_message: str,
     queue_wait_ms: int | None = None,
     execution_duration_ms: int | None = None,
+    org_id: str | None = None,
 ) -> None:
-    request_log = db.get(RequestLog, request_id)
+    q = db.query(RequestLog).filter(RequestLog.id == request_id)
+    if org_id:
+        q = q.filter(RequestLog.organization_id == org_id)
+        
+    request_log = q.first()
     if not request_log:
         return
 
@@ -88,6 +109,15 @@ def mark_request_failed(
     request_log.queue_wait_ms = queue_wait_ms
     request_log.execution_duration_ms = execution_duration_ms
     db.add(request_log)
+    
+    db.add(
+        RequestLifecycleEvent(
+            organization_id=org_id,
+            request_id=request_log.id,
+            state="failed",
+            detail=error_message,
+        )
+    )
     db.commit()
 
 
@@ -97,8 +127,10 @@ def record_failed_prompt_request(
     prompt: str,
     error_message: str,
     request_status: str = "provider_failure",
+    org_id: str | None = None,
 ) -> None:
     request_log = RequestLog(
+        organization_id=org_id,
         session_id=session_id,
         prompt=prompt,
         response="",

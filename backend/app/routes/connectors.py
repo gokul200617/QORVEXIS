@@ -7,6 +7,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from app.auth.dependencies import require_org
+from app.auth.models import UserProfile
 from app.connectors.base.connector_types import ConnectorType
 from app.connectors.health.connector_health_service import connector_health_service
 from app.connectors.registry.connector_registry import connector_registry
@@ -22,27 +24,27 @@ router = APIRouter(prefix="/connectors", tags=["connectors"])
 
 
 @router.get("", response_model=list[ConnectorResponse])
-def list_connectors(db: Session = Depends(get_db)):
+def list_connectors(user: UserProfile = Depends(require_org), db: Session = Depends(get_db)):
     """Return all persisted connector instances."""
-    return connector_service.list_connectors(db)
+    return connector_service.list_connectors(db, org_id=user.organization_id)
 
 
 @router.get("/health")
-def get_connectors_health():
+def get_connectors_health(user: UserProfile = Depends(require_org)):
     """Return in-memory health snapshots for all connectors."""
     return connector_health_service.snapshot()
 
 
 @router.get("/status")
-def get_connectors_status():
+def get_connectors_status(user: UserProfile = Depends(require_org)):
     """Return high-level connector registry status."""
     return connector_registry.snapshot()
 
 
 @router.get("/{connector_id}", response_model=ConnectorResponse)
-def get_connector(connector_id: str, db: Session = Depends(get_db)):
+def get_connector(connector_id: str, user: UserProfile = Depends(require_org), db: Session = Depends(get_db)):
     """Return details for a specific connector."""
-    instance = connector_service.get_connector(db, connector_id)
+    instance = connector_service.get_connector(db, connector_id, org_id=user.organization_id)
     if not instance:
         raise HTTPException(status_code=404, detail="Connector not found")
     return instance
@@ -56,7 +58,7 @@ class OpenAIAccountRequest(BaseModel):
 
 
 @router.post("/openai/authenticate", response_model=ConnectorResponse)
-def authenticate_openai(req: OpenAIAccountRequest, db: Session = Depends(get_db)):
+def authenticate_openai(req: OpenAIAccountRequest, user: UserProfile = Depends(require_org), db: Session = Depends(get_db)):
     """Authenticate and register a new OpenAI connector."""
     from app.connectors.openai.openai_connector import OpenAIConnector
     from app.connectors.services.connector_validation_service import connector_validation_service
@@ -87,22 +89,19 @@ def authenticate_openai(req: OpenAIAccountRequest, db: Session = Depends(get_db)
             masked_identifier=masked,
         ),
     )
-    instance = connector_service.create_connector(db, create_req)
-    ingestion_service.run_sync(db, connector)
+    instance = connector_service.create_connector(db, create_req, org_id=user.organization_id)
+    ingestion_service.run_sync(db, connector, org_id=user.organization_id)
     return instance
 
 
 @router.get("/openai/usage")
-def get_openai_usage():
+def get_openai_usage(user: UserProfile = Depends(require_org)):
     """Return aggregated token analytics for the dashboard."""
     from app.connectors.openai.openai_usage_service import openai_usage_service
-    return openai_usage_service.get_analytics_summary()
+    return openai_usage_service.get_analytics_summary(org_id=user.organization_id)
 
 
 # ── AWS Infrastructure Intelligence Endpoints — Phase 8D ─────────────────────
-# FAILURE ISOLATION: All AWS endpoints are wrapped in try/except.
-# AWS failures NEVER produce 500 errors or affect other connectors.
-# ─────────────────────────────────────────────────────────────────────────────
 
 class AWSConnectRequest(BaseModel):
     access_key:      str
@@ -113,14 +112,7 @@ class AWSConnectRequest(BaseModel):
 
 
 @router.post("/aws/connect")
-def connect_aws(req: AWSConnectRequest, db: Session = Depends(get_db)):
-    """Register and validate a new AWS connector.
-
-    Real credentials → Real STS validation (no silent fallback to simulation).
-    simulation_mode=True → Bypasses STS, generates demo data.
-
-    Security: Only masked access key is persisted. Secret key stays in-memory only.
-    """
+def connect_aws(req: AWSConnectRequest, user: UserProfile = Depends(require_org), db: Session = Depends(get_db)):
     try:
         from app.connectors.aws.aws_connector import AWSConnector
         from app.connectors.services.connector_validation_service import connector_validation_service
@@ -137,7 +129,6 @@ def connect_aws(req: AWSConnectRequest, db: Session = Depends(get_db)):
             simulation_mode=req.simulation_mode,
         )
 
-        # Validate credentials (STS in real mode, bypass in simulation)
         passed = connector_validation_service.validate(connector)
         if not passed and not req.simulation_mode:
             raise HTTPException(
@@ -145,11 +136,9 @@ def connect_aws(req: AWSConnectRequest, db: Session = Depends(get_db)):
                 detail="Invalid AWS credentials. Verify your Access Key ID and Secret Access Key.",
             )
 
-        # Register with the connector framework
         connector_registry.register(connector)
 
-        # Persist metadata only — NEVER the secret key
-        masked_key = connector.connector_id  # just the ID for display
+        masked_key = connector.connector_id
         if len(req.access_key) > 8:
             masked_key = f"AKIA...{req.access_key[-4:]}"
 
@@ -164,11 +153,10 @@ def connect_aws(req: AWSConnectRequest, db: Session = Depends(get_db)):
                 masked_identifier=masked_key,
             ),
         )
-        instance = connector_service.create_connector(db, create_req)
+        instance = connector_service.create_connector(db, create_req, org_id=user.organization_id)
 
-        # Trigger initial sync in background (non-blocking on response)
         try:
-            ingestion_service.run_sync(db, connector)
+            ingestion_service.run_sync(db, connector, org_id=user.organization_id)
         except Exception as sync_exc:
             logger.warning("aws.connect.initial_sync_failed detail=%s", sync_exc)
 
@@ -191,109 +179,66 @@ def connect_aws(req: AWSConnectRequest, db: Session = Depends(get_db)):
 
 
 @router.get("/aws/health")
-def get_aws_health():
-    """Return AWS connector health and sync state.
-
-    Always returns a safe payload — never 500 on AWS failure.
-    """
+def get_aws_health(user: UserProfile = Depends(require_org)):
     try:
         from app.connectors.aws.aws_usage_service import aws_usage_service
         return aws_usage_service.get_health()
     except Exception as exc:
         logger.warning("aws.health.error detail=%s", exc)
-        return {
-            "available": False,
-            "reason":    f"AWS health check unavailable: {exc}",
-        }
+        return {"available": False, "reason": f"AWS health check unavailable: {exc}"}
 
 
 @router.get("/aws/infrastructure")
-def get_aws_infrastructure():
-    """Return EC2 discovery and CloudWatch utilization summary.
-
-    Returns degraded payload if AWS is unavailable — never crashes dashboard.
-    """
+def get_aws_infrastructure(user: UserProfile = Depends(require_org)):
     try:
         from app.connectors.aws.aws_usage_service import aws_usage_service
-        return aws_usage_service.get_infrastructure_summary()
+        return aws_usage_service.get_infrastructure_summary(org_id=user.organization_id)
     except Exception as exc:
         logger.warning("aws.infrastructure.error detail=%s", exc)
-        return {
-            "available":    False,
-            "reason":       f"AWS infrastructure data unavailable: {exc}",
-            "instances":    [],
-            "total_instances":   0,
-            "running_instances": 0,
-        }
+        return {"available": False, "reason": f"AWS infrastructure data unavailable: {exc}", "instances": [], "total_instances": 0, "running_instances": 0}
 
 
 @router.get("/aws/costs")
-def get_aws_costs():
-    """Return Cost Explorer analytics — spend, service breakdown, trends.
-
-    Returns degraded payload if Cost Explorer is unavailable.
-    """
+def get_aws_costs(user: UserProfile = Depends(require_org)):
     try:
         from app.connectors.aws.aws_usage_service import aws_usage_service
-        return aws_usage_service.get_cost_summary()
+        return aws_usage_service.get_cost_summary(org_id=user.organization_id)
     except Exception as exc:
         logger.warning("aws.costs.error detail=%s", exc)
-        return {
-            "available":      False,
-            "reason":         f"AWS cost data unavailable: {exc}",
-            "monthly_spend":  0.0,
-            "daily_spend":    0.0,
-        }
+        return {"available": False, "reason": f"AWS cost data unavailable: {exc}", "monthly_spend": 0.0, "daily_spend": 0.0}
 
 
 @router.get("/aws/recommendations")
-def get_aws_recommendations():
-    """Return optimization recommendations from the AWS optimization engine.
-
-    Returns empty list if no connector or data is available.
-    """
+def get_aws_recommendations(user: UserProfile = Depends(require_org)):
     try:
         from app.connectors.aws.aws_usage_service import aws_usage_service
-        return aws_usage_service.get_recommendations()
+        return aws_usage_service.get_recommendations(org_id=user.organization_id)
     except Exception as exc:
         logger.warning("aws.recommendations.error detail=%s", exc)
-        return {
-            "available":          False,
-            "reason":             f"AWS recommendations unavailable: {exc}",
-            "recommendations":    [],
-            "recommendation_count": 0,
-        }
+        return {"available": False, "reason": f"AWS recommendations unavailable: {exc}", "recommendations": [], "recommendation_count": 0}
 
 
 @router.get("/aws/summary")
-def get_aws_summary():
-    """Return the single aggregated AWS dashboard payload.
-
-    This is the PRIMARY endpoint the frontend should poll.
-    Aggregates infrastructure, costs, recommendations, and sync state
-    into one response to minimize frontend complexity and API round-trips.
-
-    Always returns a safe payload — never 500 on AWS failure.
-    """
+def get_aws_summary(user: UserProfile = Depends(require_org)):
     try:
         from app.connectors.aws.aws_connector_summary_service import aws_connector_summary_service
-        return aws_connector_summary_service.get_summary()
+        return aws_connector_summary_service.get_summary(org_id=user.organization_id)
     except Exception as exc:
         logger.warning("aws.summary.error detail=%s", exc)
         return {
-            "monthly_spend":               0.0,
-            "daily_spend":                 0.0,
-            "active_instances":            0,
-            "total_instances":             0,
-            "underutilized_instances":     0,
-            "estimated_savings":           0.0,
+            "monthly_spend": 0.0,
+            "daily_spend": 0.0,
+            "active_instances": 0,
+            "total_instances": 0,
+            "underutilized_instances": 0,
+            "estimated_savings": 0.0,
             "infrastructure_health_score": 0.0,
-            "optimization_score":          0.0,
-            "waste_score":                 0.0,
-            "connector_status":            "error",
-            "last_sync":                   None,
-            "available":                   False,
-            "reason":                      f"AWS summary unavailable: {exc}",
+            "optimization_score": 0.0,
+            "waste_score": 0.0,
+            "connector_status": "error",
+            "last_sync": None,
+            "available": False,
+            "reason": f"AWS summary unavailable: {exc}",
         }
 
 
@@ -305,8 +250,7 @@ class GroqConnectRequest(BaseModel):
     simulation_mode: bool = False
 
 @router.post("/groq/connect", response_model=ConnectorResponse)
-def connect_groq(req: GroqConnectRequest, db: Session = Depends(get_db)):
-    """Register and validate a new Groq connector."""
+def connect_groq(req: GroqConnectRequest, user: UserProfile = Depends(require_org), db: Session = Depends(get_db)):
     try:
         from app.connectors.groq.groq_connector import GroqConnector
         from app.connectors.services.connector_validation_service import connector_validation_service
@@ -337,7 +281,7 @@ def connect_groq(req: GroqConnectRequest, db: Session = Depends(get_db)):
                 masked_identifier=masked,
             ),
         )
-        return connector_service.create_connector(db, create_req)
+        return connector_service.create_connector(db, create_req, org_id=user.organization_id)
     except HTTPException:
         raise
     except Exception as exc:
@@ -351,8 +295,7 @@ class GeminiConnectRequest(BaseModel):
     simulation_mode: bool = False
 
 @router.post("/gemini/connect", response_model=ConnectorResponse)
-def connect_gemini(req: GeminiConnectRequest, db: Session = Depends(get_db)):
-    """Register and validate a new Gemini connector."""
+def connect_gemini(req: GeminiConnectRequest, user: UserProfile = Depends(require_org), db: Session = Depends(get_db)):
     try:
         from app.connectors.gemini.gemini_connector import GeminiConnector
         from app.connectors.services.connector_validation_service import connector_validation_service
@@ -383,7 +326,7 @@ def connect_gemini(req: GeminiConnectRequest, db: Session = Depends(get_db)):
                 masked_identifier=masked,
             ),
         )
-        return connector_service.create_connector(db, create_req)
+        return connector_service.create_connector(db, create_req, org_id=user.organization_id)
     except HTTPException:
         raise
     except Exception as exc:
@@ -397,8 +340,7 @@ class OpenRouterConnectRequest(BaseModel):
     simulation_mode: bool = False
 
 @router.post("/openrouter/connect", response_model=ConnectorResponse)
-def connect_openrouter(req: OpenRouterConnectRequest, db: Session = Depends(get_db)):
-    """Register and validate a new OpenRouter connector."""
+def connect_openrouter(req: OpenRouterConnectRequest, user: UserProfile = Depends(require_org), db: Session = Depends(get_db)):
     try:
         from app.connectors.openrouter.openrouter_connector import OpenRouterConnector
         from app.connectors.services.connector_validation_service import connector_validation_service
@@ -429,7 +371,7 @@ def connect_openrouter(req: OpenRouterConnectRequest, db: Session = Depends(get_
                 masked_identifier=masked,
             ),
         )
-        return connector_service.create_connector(db, create_req)
+        return connector_service.create_connector(db, create_req, org_id=user.organization_id)
     except HTTPException:
         raise
     except Exception as exc:

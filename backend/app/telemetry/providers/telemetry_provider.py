@@ -26,7 +26,7 @@ class TelemetryProvider:
         self._last_snapshot: TelemetrySnapshot | None = None
         self._last_persist_monotonic: float = 0.0
 
-    def get_snapshot(self, db: "Session | None" = None) -> TelemetrySnapshot:
+    def get_snapshot(self, db: "Session | None" = None, org_id: str | None = None) -> TelemetrySnapshot:
         """Collect a fresh snapshot and optionally persist it."""
         from app.settings import settings
 
@@ -35,7 +35,7 @@ class TelemetryProvider:
 
         if db is not None and settings.telemetry_persist_snapshots:
             if self._should_persist(snapshot, settings):
-                self._persist(snapshot, db, settings)
+                self._persist(snapshot, db, settings, org_id=org_id)
 
         return snapshot
 
@@ -61,11 +61,12 @@ class TelemetryProvider:
 
         return False
 
-    def _persist(self, snapshot: TelemetrySnapshot, db: "Session", settings) -> None:
+    def _persist(self, snapshot: TelemetrySnapshot, db: "Session", settings, org_id: str | None = None) -> None:
         try:
             from app.models.telemetry_snapshot import TelemetrySnapshotRecord
 
             record = TelemetrySnapshotRecord(
+                organization_id=org_id,
                 source=snapshot.source,
                 cpu_percent=snapshot.cpu_percent,
                 memory_percent=snapshot.memory_percent,

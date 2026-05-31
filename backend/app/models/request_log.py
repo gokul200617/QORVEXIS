@@ -8,6 +8,7 @@ from app.database.session import Base
 
 class RequestLog(Base):
     __tablename__ = "requests"
+    organization_id: Mapped[str | None] = mapped_column(String(36), index=True, nullable=True)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     session_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)

@@ -16,6 +16,7 @@ class ConnectorInstance(Base):
     """
 
     __tablename__ = "connector_instances"
+    organization_id: Mapped[str | None] = mapped_column(String(36), index=True, nullable=True)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     connector_id:   Mapped[str] = mapped_column(String(128), unique=True, nullable=False, index=True)

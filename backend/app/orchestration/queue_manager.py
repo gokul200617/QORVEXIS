@@ -39,6 +39,7 @@ class QueuedExecution:
     future: Future = field(compare=False)
     correlation_id: str = field(compare=False)
     session_id: str | None = field(compare=False, default=None)
+    org_id: str | None = field(compare=False, default=None)
 
 
 class QueueManager:
@@ -80,6 +81,7 @@ class QueueManager:
         priority: str,
         memory_context: list[dict[str, str]],
         session_id: str | None = None,
+        org_id: str | None = None,
     ) -> Future:
         selected_provider = select_adaptive_provider(prompt)
         is_duplicate = dedup_tracker.is_duplicate(prompt)
@@ -110,6 +112,7 @@ class QueueManager:
             future=future,
             correlation_id=get_request_id(),
             session_id=session_id,
+            org_id=org_id,
         )
         try:
             self._queue.put(execution, timeout=settings.queue_enqueue_timeout_seconds)
@@ -367,6 +370,7 @@ class QueueManager:
                 queue_wait_ms=queue_wait_ms,
                 execution_duration_ms=execution_duration_ms,
                 cache_hit=cache_hit,
+                org_id=execution.org_id,
             )
             transition_request(db, execution.request_id, COMPLETED)
             provider_capacity.mark_complete(execution.selected_provider, execution_duration_ms)
@@ -416,6 +420,7 @@ class QueueManager:
                 error_message=str(exc),
                 queue_wait_ms=queue_wait_ms,
                 execution_duration_ms=execution_duration_ms,
+                org_id=execution.org_id,
             )
             transition_request(db, execution.request_id, FAILED, detail=str(exc))
             provider_capacity.mark_complete(execution.selected_provider, execution_duration_ms, failed=True)
@@ -458,6 +463,7 @@ class QueueManager:
                 error_message=str(exc),
                 queue_wait_ms=queue_wait_ms,
                 execution_duration_ms=execution_duration_ms,
+                org_id=execution.org_id,
             )
             transition_request(db, execution.request_id, FAILED, detail=str(exc))
             if provider_started:

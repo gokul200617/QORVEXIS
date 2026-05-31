@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import models  # noqa: F401
+from app.auth import models as auth_models  # noqa: F401 — Phase 10C: register auth tables
 from app.database.health import check_database, initialize_database
 from app.orchestration.queue_manager import queue_manager
 from app.routes.ask import router as ask_router
@@ -54,21 +55,27 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    app.include_router(ask_router)
-    app.include_router(metrics_router)
-    app.include_router(sessions_router)
-    app.include_router(telemetry_router)
-    app.include_router(connectors_router)
-    app.include_router(token_analytics_router)
+    from fastapi import Depends
+    from app.auth.dependencies import require_org
+
+    app.include_router(ask_router, dependencies=[Depends(require_org)])
+    app.include_router(metrics_router, dependencies=[Depends(require_org)])
+    app.include_router(sessions_router, dependencies=[Depends(require_org)])
+    app.include_router(telemetry_router, dependencies=[Depends(require_org)])
+    app.include_router(connectors_router, dependencies=[Depends(require_org)])
+    app.include_router(token_analytics_router, dependencies=[Depends(require_org)])
 
     from app.routes.providers import router as providers_router
-    app.include_router(providers_router)
+    app.include_router(providers_router, dependencies=[Depends(require_org)])
 
     from app.gateway.gateway_router import router as gateway_router
-    app.include_router(gateway_router)
+    app.include_router(gateway_router, dependencies=[Depends(require_org)])
 
     from app.routes.business import router as business_router
-    app.include_router(business_router)
+    app.include_router(business_router, dependencies=[Depends(require_org)])
+
+    from app.auth.routes import router as auth_router  # Phase 10C
+    app.include_router(auth_router)
 
     @app.on_event("startup")
     def ensure_database_tables() -> None:

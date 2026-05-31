@@ -12,6 +12,7 @@ class ConnectorSyncEvent(Base):
     """Immutable audit record for each connector sync cycle."""
 
     __tablename__ = "connector_sync_events"
+    organization_id: Mapped[str | None] = mapped_column(String(36), index=True, nullable=True)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     connector_id:     Mapped[str]  = mapped_column(String(128), nullable=False, index=True)

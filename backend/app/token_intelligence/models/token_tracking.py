@@ -10,6 +10,7 @@ from app.database.session import Base
 
 class TokenTelemetryRecord(Base):
     __tablename__ = "token_telemetry"
+    organization_id: Mapped[str | None] = mapped_column(String(36), index=True, nullable=True)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     provider: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
@@ -45,6 +46,7 @@ class TokenTelemetryRecord(Base):
 
 class TokenSnapshotRecord(Base):
     __tablename__ = "token_snapshots"
+    organization_id: Mapped[str | None] = mapped_column(String(36), index=True, nullable=True)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     resolution: Mapped[str] = mapped_column(String(16), nullable=False) # e.g. "hourly", "daily"

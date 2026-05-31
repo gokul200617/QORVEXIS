@@ -167,7 +167,37 @@
           </svg>
         </button>
 
-        <div class="avatar" aria-label="User profile">Q</div>
+        <div class="user-menu-wrapper" id="userMenuWrapper" style="position:relative;">
+          <button class="user-menu-trigger" id="userMenuTrigger" aria-haspopup="true" aria-expanded="false" style="display:flex;align-items:center;gap:8px;background:transparent;border:1px solid var(--border);border-radius:8px;padding:5px 10px 5px 6px;cursor:pointer;color:var(--text-primary);font-family:inherit;font-size:0.8125rem;transition:background 0.15s;">
+            <div class="avatar" id="userAvatar" style="width:28px;height:28px;font-size:0.75rem;">Q</div>
+            <div style="text-align:left;line-height:1.2;">
+              <div id="userDisplayName" style="font-weight:600;font-size:0.8125rem;">Loading…</div>
+              <div id="userRoleBadge" style="font-size:0.7rem;color:var(--text-muted);">—</div>
+            </div>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="margin-left:2px;opacity:0.5;"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+
+          <div id="userDropdown" style="display:none;position:absolute;top:calc(100% + 8px);right:0;min-width:220px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 16px 40px rgba(0,0,0,0.5);z-index:1000;overflow:hidden;">
+            <div style="padding:12px 14px;border-bottom:1px solid var(--border);">
+              <div style="font-weight:600;font-size:0.875rem;" id="dropdownName">—</div>
+              <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;" id="dropdownEmail">—</div>
+              <div style="margin-top:6px;display:flex;align-items:center;gap:6px;">
+                <span class="panel-badge health-ok" id="dropdownRole" style="font-size:0.7rem;">—</span>
+                <span style="font-size:0.7rem;color:var(--text-muted);" id="dropdownOrg">No org</span>
+              </div>
+            </div>
+            <div style="padding:6px;">
+              <button onclick="navigateTo('settings')" style="width:100%;text-align:left;padding:8px 10px;background:transparent;border:none;color:var(--text-primary);font-family:inherit;font-size:0.8125rem;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="6" r="2.5" stroke="currentColor" stroke-width="1.4"/><path d="M3 13c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+                Organization Settings
+              </button>
+              <button onclick="signOut()" style="width:100%;text-align:left;padding:8px 10px;background:transparent;border:none;color:#f87171;font-family:inherit;font-size:0.8125rem;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:8px;" onmouseover="this.style.background='rgba(248,113,113,0.08)'" onmouseout="this.style.background='transparent'">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3M10 11l3-3-3-3M13 8H6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -770,7 +800,7 @@
           </div>
         </div>
 
-        <div class="dash-grid dash-grid-2">
+        <div class="dash-grid dash-grid-2" style="margin-bottom: 2rem;">
           <!-- OpenAI Connection Panel -->
           <div class="panel">
             <div class="panel-header">
@@ -791,12 +821,99 @@
 
           <!-- Connector Health -->
           <div class="panel" id="connectorHealthPanel" style="display: none;">
-            <div class="panel-header"><h2 class="panel-title">Connector Health</h2></div>
+            <div class="panel-header"><h2 class="panel-title">OpenAI Health</h2></div>
             <div class="stat-stack" style="margin-top: 1rem;">
               <div class="stat-row"><span class="stat-label">Status</span><span class="stat-value" id="openaiHealthStatus">--</span></div>
               <div class="stat-row"><span class="stat-label">Sync Count</span><span class="stat-value" id="openaiSyncCount">--</span></div>
               <div class="stat-row"><span class="stat-label">Last Synced At</span><span class="stat-value" id="openaiLastSync">--</span></div>
               <div class="stat-row"><span class="stat-label">Connector ID</span><span class="stat-value muted" id="openaiConnectorId" style="font-family: monospace;">--</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dash-grid dash-grid-2" style="margin-bottom: 2rem;">
+          <!-- Groq Connection Panel -->
+          <div class="panel">
+            <div class="panel-header">
+              <h2 class="panel-title">Connect Groq</h2>
+              <span class="panel-badge" id="groqStatusBadge">Disconnected</span>
+            </div>
+            <form id="groqConnectForm" class="workload-form" style="margin-top: 1rem;">
+              <div class="form-field">
+                <label for="groqKeyInput" class="form-label" style="display: block; margin-bottom: 0.5rem; font-size: 0.875rem; color: var(--text-muted);">Groq API Key</label>
+                <input type="password" id="groqKeyInput" placeholder="gsk_..." required style="width: 100%; padding: 0.75rem; border-radius: 6px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: var(--text-primary); font-family: monospace;">
+              </div>
+              <div class="form-actions" style="margin-top: 1.5rem; display: flex; align-items: center; gap: 1rem;">
+                <button type="submit" class="btn-primary" id="groqSubmitBtn">Connect API</button>
+                <p id="groqFormMessage" class="form-message" aria-live="polite" style="margin: 0; font-size: 0.875rem;"></p>
+              </div>
+            </form>
+          </div>
+
+          <!-- Groq Health -->
+          <div class="panel" id="groqHealthPanel" style="display: none;">
+            <div class="panel-header"><h2 class="panel-title">Groq Health</h2></div>
+            <div class="stat-stack" style="margin-top: 1rem;">
+              <div class="stat-row"><span class="stat-label">Status</span><span class="stat-value" id="groqHealthStatus">--</span></div>
+              <div class="stat-row"><span class="stat-label">Connector ID</span><span class="stat-value muted" id="groqConnectorId" style="font-family: monospace;">--</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dash-grid dash-grid-2" style="margin-bottom: 2rem;">
+          <!-- Gemini Connection Panel -->
+          <div class="panel">
+            <div class="panel-header">
+              <h2 class="panel-title">Connect Gemini</h2>
+              <span class="panel-badge" id="geminiStatusBadge">Disconnected</span>
+            </div>
+            <form id="geminiConnectForm" class="workload-form" style="margin-top: 1rem;">
+              <div class="form-field">
+                <label for="geminiKeyInput" class="form-label" style="display: block; margin-bottom: 0.5rem; font-size: 0.875rem; color: var(--text-muted);">Gemini API Key</label>
+                <input type="password" id="geminiKeyInput" placeholder="AIza..." required style="width: 100%; padding: 0.75rem; border-radius: 6px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: var(--text-primary); font-family: monospace;">
+              </div>
+              <div class="form-actions" style="margin-top: 1.5rem; display: flex; align-items: center; gap: 1rem;">
+                <button type="submit" class="btn-primary" id="geminiSubmitBtn">Connect API</button>
+                <p id="geminiFormMessage" class="form-message" aria-live="polite" style="margin: 0; font-size: 0.875rem;"></p>
+              </div>
+            </form>
+          </div>
+
+          <!-- Gemini Health -->
+          <div class="panel" id="geminiHealthPanel" style="display: none;">
+            <div class="panel-header"><h2 class="panel-title">Gemini Health</h2></div>
+            <div class="stat-stack" style="margin-top: 1rem;">
+              <div class="stat-row"><span class="stat-label">Status</span><span class="stat-value" id="geminiHealthStatus">--</span></div>
+              <div class="stat-row"><span class="stat-label">Connector ID</span><span class="stat-value muted" id="geminiConnectorId" style="font-family: monospace;">--</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dash-grid dash-grid-2" style="margin-bottom: 2rem;">
+          <!-- OpenRouter Connection Panel -->
+          <div class="panel">
+            <div class="panel-header">
+              <h2 class="panel-title">Connect OpenRouter</h2>
+              <span class="panel-badge" id="openrouterStatusBadge">Disconnected</span>
+            </div>
+            <form id="openrouterConnectForm" class="workload-form" style="margin-top: 1rem;">
+              <div class="form-field">
+                <label for="openrouterKeyInput" class="form-label" style="display: block; margin-bottom: 0.5rem; font-size: 0.875rem; color: var(--text-muted);">OpenRouter API Key</label>
+                <input type="password" id="openrouterKeyInput" placeholder="sk-or-v1-..." required style="width: 100%; padding: 0.75rem; border-radius: 6px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: var(--text-primary); font-family: monospace;">
+              </div>
+              <div class="form-actions" style="margin-top: 1.5rem; display: flex; align-items: center; gap: 1rem;">
+                <button type="submit" class="btn-primary" id="openrouterSubmitBtn">Connect API</button>
+                <p id="openrouterFormMessage" class="form-message" aria-live="polite" style="margin: 0; font-size: 0.875rem;"></p>
+              </div>
+            </form>
+          </div>
+
+          <!-- OpenRouter Health -->
+          <div class="panel" id="openrouterHealthPanel" style="display: none;">
+            <div class="panel-header"><h2 class="panel-title">OpenRouter Health</h2></div>
+            <div class="stat-stack" style="margin-top: 1rem;">
+              <div class="stat-row"><span class="stat-label">Status</span><span class="stat-value" id="openrouterHealthStatus">--</span></div>
+              <div class="stat-row"><span class="stat-label">Connector ID</span><span class="stat-value muted" id="openrouterConnectorId" style="font-family: monospace;">--</span></div>
             </div>
           </div>
         </div>

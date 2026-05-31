@@ -10,6 +10,7 @@ from app.database.session import Base
 
 class OptimizationRecommendation(Base):
     __tablename__ = "optimization_recommendations"
+    organization_id: Mapped[str | None] = mapped_column(String(36), index=True, nullable=True)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     rule_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)

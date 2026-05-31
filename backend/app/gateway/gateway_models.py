@@ -14,6 +14,7 @@ from app.database.session import Base
 class GatewayRequestRecord(Base):
     """Every request proxied through the Qorvexis Gateway generates one row."""
     __tablename__ = "gateway_requests"
+    organization_id: Mapped[str | None] = mapped_column(String(36), index=True, nullable=True)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
 

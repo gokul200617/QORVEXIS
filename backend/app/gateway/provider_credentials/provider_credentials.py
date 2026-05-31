@@ -8,6 +8,7 @@ from app.database.session import Base
 class ProviderCredential(Base):
     """Stores API keys for the Gateway securely."""
     __tablename__ = "provider_credentials"
+    organization_id: Mapped[str | None] = mapped_column(String(36), index=True, nullable=True)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     provider: Mapped[str] = mapped_column(String(64), nullable=False, index=True)

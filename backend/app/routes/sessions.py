@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from app.auth.dependencies import require_org
+from app.auth.models import UserProfile
 from app.database.session import get_db
 from app.routes.schemas import CreateSessionRequest, SessionRequestItem, SessionSummary
 from app.services.session_service import create_session, get_session_requests, list_sessions
@@ -11,26 +13,31 @@ router = APIRouter(prefix="/sessions", tags=["sessions"])
 @router.post("", response_model=SessionSummary)
 def create_operational_session(
     payload: CreateSessionRequest,
+    user: UserProfile = Depends(require_org),
     db: Session = Depends(get_db),
 ) -> SessionSummary:
-    session = create_session(db, title=payload.title)
+    session = create_session(db, title=payload.title, org_id=user.organization_id)
     return SessionSummary.model_validate(session, from_attributes=True)
 
 
 @router.get("", response_model=list[SessionSummary])
-def list_operational_sessions(db: Session = Depends(get_db)) -> list[SessionSummary]:
+def list_operational_sessions(
+    user: UserProfile = Depends(require_org),
+    db: Session = Depends(get_db)
+) -> list[SessionSummary]:
     return [
         SessionSummary.model_validate(session, from_attributes=True)
-        for session in list_sessions(db)
+        for session in list_sessions(db, org_id=user.organization_id)
     ]
 
 
 @router.get("/{session_id}/requests", response_model=list[SessionRequestItem])
 def get_operational_session_requests(
     session_id: str,
+    user: UserProfile = Depends(require_org),
     db: Session = Depends(get_db),
 ) -> list[SessionRequestItem]:
-    rows = get_session_requests(db, session_id)
+    rows = get_session_requests(db, session_id, org_id=user.organization_id)
     if not rows:
         return []
 

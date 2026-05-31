@@ -9,6 +9,7 @@ from app.database.session import Base
 
 class InferenceSession(Base):
     __tablename__ = "inference_sessions"
+    organization_id: Mapped[str | None] = mapped_column(String(36), index=True, nullable=True)
 
     id: Mapped[str] = mapped_column(
         String(64),

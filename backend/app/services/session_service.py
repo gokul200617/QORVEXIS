@@ -16,8 +16,8 @@ def build_session_title(prompt: str) -> str:
     return compact_prompt[:72]
 
 
-def create_session(db: Session, title: str | None = None) -> InferenceSession:
-    session = InferenceSession(title=title or "New operational session")
+def create_session(db: Session, title: str | None = None, org_id: str | None = None) -> InferenceSession:
+    session = InferenceSession(title=title or "New operational session", organization_id=org_id)
     db.add(session)
     db.commit()
     db.refresh(session)
@@ -28,55 +28,50 @@ def get_or_create_session(
     db: Session,
     session_id: str | None,
     prompt: str,
+    org_id: str | None = None,
 ) -> InferenceSession:
     if session_id:
-        existing_session = (
-            db.query(InferenceSession)
-            .filter(InferenceSession.id == session_id)
-            .one_or_none()
-        )
+        q = db.query(InferenceSession).filter(InferenceSession.id == session_id)
+        if org_id:
+            q = q.filter(InferenceSession.organization_id == org_id)
+        existing_session = q.one_or_none()
+        
         if existing_session and not is_session_stale(existing_session):
             return existing_session
         if existing_session:
-            evict_session(db, existing_session.id)
+            evict_session(db, existing_session.id, org_id=org_id)
 
-    return create_session(db, title=build_session_title(prompt))
+    return create_session(db, title=build_session_title(prompt), org_id=org_id)
 
 
 def touch_session(db: Session, session: InferenceSession) -> None:
     session.updated_at = datetime.now(timezone.utc)
     db.add(session)
+    db.commit()
 
 
-def list_sessions(db: Session) -> list[InferenceSession]:
-    cleanup_stale_sessions(db)
-    return (
-        db.query(InferenceSession)
-        .order_by(InferenceSession.updated_at.desc())
-        .limit(40)
-        .all()
-    )
+def list_sessions(db: Session, org_id: str | None = None) -> list[InferenceSession]:
+    cleanup_stale_sessions(db, org_id=org_id)
+    q = db.query(InferenceSession)
+    if org_id:
+        q = q.filter(InferenceSession.organization_id == org_id)
+    return q.order_by(InferenceSession.updated_at.desc()).limit(40).all()
 
 
-def get_session_requests(db: Session, session_id: str) -> list[RequestLog]:
-    return (
-        db.query(RequestLog)
-        .filter(RequestLog.session_id == session_id)
-        .order_by(RequestLog.created_at.asc())
-        .all()
-    )
+def get_session_requests(db: Session, session_id: str, org_id: str | None = None) -> list[RequestLog]:
+    q = db.query(RequestLog).filter(RequestLog.session_id == session_id)
+    if org_id:
+        q = q.filter(RequestLog.organization_id == org_id)
+    return q.order_by(RequestLog.created_at.asc()).all()
 
 
-def get_recent_session_context(db: Session, session_id: str) -> list[dict[str, str]]:
-    enforce_session_bounds(db, session_id)
-    rows = (
-        db.query(RequestLog)
-        .filter(RequestLog.session_id == session_id)
-        .filter(RequestLog.request_status == "success")
-        .order_by(RequestLog.created_at.desc())
-        .limit(MEMORY_LIMIT)
-        .all()
-    )
+def get_recent_session_context(db: Session, session_id: str, org_id: str | None = None) -> list[dict[str, str]]:
+    enforce_session_bounds(db, session_id, org_id=org_id)
+    q = db.query(RequestLog).filter(RequestLog.session_id == session_id).filter(RequestLog.request_status == "success")
+    if org_id:
+        q = q.filter(RequestLog.organization_id == org_id)
+        
+    rows = q.order_by(RequestLog.created_at.desc()).limit(MEMORY_LIMIT).all()
 
     return [
         {"prompt": row.prompt, "response": row.response}
@@ -92,40 +87,41 @@ def is_session_stale(session: InferenceSession) -> bool:
     return updated_at < ttl_cutoff
 
 
-def evict_session(db: Session, session_id: str) -> int:
-    deleted_requests = (
-        db.query(RequestLog)
-        .filter(RequestLog.session_id == session_id)
-        .delete(synchronize_session=False)
-    )
-    db.query(InferenceSession).filter(InferenceSession.id == session_id).delete(synchronize_session=False)
+def evict_session(db: Session, session_id: str, org_id: str | None = None) -> int:
+    req_q = db.query(RequestLog).filter(RequestLog.session_id == session_id)
+    sess_q = db.query(InferenceSession).filter(InferenceSession.id == session_id)
+    
+    if org_id:
+        req_q = req_q.filter(RequestLog.organization_id == org_id)
+        sess_q = sess_q.filter(InferenceSession.organization_id == org_id)
+        
+    deleted_requests = req_q.delete(synchronize_session=False)
+    sess_q.delete(synchronize_session=False)
     db.commit()
     return deleted_requests
 
 
-def cleanup_stale_sessions(db: Session) -> int:
+def cleanup_stale_sessions(db: Session, org_id: str | None = None) -> int:
     ttl_cutoff = datetime.now(timezone.utc) - timedelta(seconds=settings.session_ttl_seconds)
-    stale_sessions = (
-        db.query(InferenceSession)
-        .filter(InferenceSession.updated_at < ttl_cutoff)
-        .order_by(InferenceSession.updated_at.asc())
-        .limit(settings.session_cleanup_batch_size)
-        .all()
-    )
+    q = db.query(InferenceSession).filter(InferenceSession.updated_at < ttl_cutoff)
+    if org_id:
+        q = q.filter(InferenceSession.organization_id == org_id)
+        
+    stale_sessions = q.order_by(InferenceSession.updated_at.asc()).limit(settings.session_cleanup_batch_size).all()
+    
     evicted = 0
     for session in stale_sessions:
-        evicted += evict_session(db, session.id)
+        evicted += evict_session(db, session.id, org_id=org_id)
     return evicted
 
 
-def enforce_session_bounds(db: Session, session_id: str) -> int:
-    rows = (
-        db.query(RequestLog.id)
-        .filter(RequestLog.session_id == session_id)
-        .order_by(RequestLog.created_at.desc())
-        .offset(settings.session_max_requests)
-        .all()
-    )
+def enforce_session_bounds(db: Session, session_id: str, org_id: str | None = None) -> int:
+    q = db.query(RequestLog.id).filter(RequestLog.session_id == session_id)
+    if org_id:
+        q = q.filter(RequestLog.organization_id == org_id)
+        
+    rows = q.order_by(RequestLog.created_at.desc()).offset(settings.session_max_requests).all()
+    
     stale_ids = [row.id for row in rows]
     if not stale_ids:
         return 0
@@ -138,14 +134,19 @@ def enforce_session_bounds(db: Session, session_id: str) -> int:
     return deleted
 
 
-def get_session_memory_metrics(db: Session) -> dict:
-    cleanup_evictions = cleanup_stale_sessions(db)
-    total_sessions = db.query(InferenceSession).count()
-    total_session_requests = (
-        db.query(RequestLog)
-        .filter(RequestLog.session_id.isnot(None))
-        .count()
-    )
+def get_session_memory_metrics(db: Session, org_id: str | None = None) -> dict:
+    cleanup_evictions = cleanup_stale_sessions(db, org_id=org_id)
+    
+    sess_q = db.query(InferenceSession)
+    req_q = db.query(RequestLog).filter(RequestLog.session_id.isnot(None))
+    
+    if org_id:
+        sess_q = sess_q.filter(InferenceSession.organization_id == org_id)
+        req_q = req_q.filter(RequestLog.organization_id == org_id)
+        
+    total_sessions = sess_q.count()
+    total_session_requests = req_q.count()
+    
     return {
         "session_ttl_seconds": settings.session_ttl_seconds,
         "session_max_requests": settings.session_max_requests,

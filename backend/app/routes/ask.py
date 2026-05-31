@@ -1,9 +1,11 @@
 import logging
 from concurrent.futures import TimeoutError
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.auth.dependencies import require_org
+from app.auth.models import UserProfile
 from app.database.session import SessionLocal
 from app.observability.logger import log_event
 from app.observability.tracing import trace_context
@@ -26,12 +28,15 @@ logger = logging.getLogger("qorvexis.request")
 
 
 @router.post("/ask", response_model=AskResponse)
-def ask(payload: AskRequest) -> AskResponse:
+def ask(
+    payload: AskRequest,
+    user: UserProfile = Depends(require_org),
+) -> AskResponse:
     with trace_context(session_id=payload.session_id):
-        return _ask_traced(payload)
+        return _ask_traced(payload, user.organization_id)
 
 
-def _ask_traced(payload: AskRequest) -> AskResponse:
+def _ask_traced(payload: AskRequest, org_id: str) -> AskResponse:
     log_event(logger, "info", "request.received", prompt_length=len(payload.prompt))
     
     with SessionLocal() as db:
@@ -39,15 +44,17 @@ def _ask_traced(payload: AskRequest) -> AskResponse:
             db=db,
             session_id=payload.session_id,
             prompt=payload.prompt,
+            org_id=org_id,
         )
         active_session_id = active_session.id
-        memory_context = get_recent_session_context(db, active_session_id)
+        memory_context = get_recent_session_context(db, active_session_id, org_id=org_id)
         priority = assign_priority(payload.prompt)
         queued_request = create_queued_request(
             db=db,
             session_id=active_session_id,
             prompt=payload.prompt,
             priority=priority,
+            org_id=org_id,
         )
         queued_request_id = queued_request.id
         db.commit()
@@ -59,6 +66,7 @@ def _ask_traced(payload: AskRequest) -> AskResponse:
             priority=priority,
             memory_context=memory_context,
             session_id=active_session_id,
+            org_id=org_id,  # We may need to pass this to enqueue if the workers need it, but the RequestLog is already tied to org_id. We'll add it if needed later.
         )
         execution = future.result(timeout=settings.request_timeout_seconds)
         inference_result = execution["inference_result"]
@@ -103,6 +111,7 @@ def _ask_traced(payload: AskRequest) -> AskResponse:
         completion_tokens = cost_tracker._estimate_tokens(inference_result.response) if not is_cache_hit else 0
         
         token_tracking_service.record_telemetry(TokenTelemetryCreate(
+            organization_id=org_id,
             provider=inference_result.provider,
             model=inference_result.model,
             prompt_tokens=prompt_tokens,

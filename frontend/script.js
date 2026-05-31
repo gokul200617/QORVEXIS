@@ -7,6 +7,24 @@
 const isDev = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
 const API_BASE_URL = isDev ? "http://127.0.0.1:8000" : "https://api.qorvexis.com";
 
+// ── Phase 10C: Auth Helpers ────────────────────────────────────────────────────
+window._qorvexisUser = null;
+
+function getAuthToken() {
+  return localStorage.getItem("qorvexis_access_token") || null;
+}
+function signOut() {
+  localStorage.removeItem("qorvexis_access_token");
+  window.location.href = "auth.html";
+}
+// Auth guard: redirect to login unless authenticated
+(function authGuard() {
+  const token = getAuthToken();
+  if (!token) {
+    window.location.href = "auth.html";
+  }
+})();
+
 // â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let requestCount       = 0;
 let successCount       = 0;
@@ -58,15 +76,37 @@ const apiClient = {
     }
   },
 
+  _authHeaders() {
+    const token = getAuthToken();
+    const h = { "Content-Type": "application/json" };
+    if (token) h["Authorization"] = `Bearer ${token}`;
+    return h;
+  },
+
   async get(endpoint) {
-    return this.request(`${API_BASE_URL}${endpoint}`);
+    return this.request(`${API_BASE_URL}${endpoint}`, { headers: this._authHeaders() });
   },
 
   async post(endpoint, body) {
     return this.request(`${API_BASE_URL}${endpoint}`, {
       method:  "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: this._authHeaders(),
       body:    JSON.stringify(body),
+    });
+  },
+
+  async patch(endpoint, body) {
+    return this.request(`${API_BASE_URL}${endpoint}`, {
+      method:  "PATCH",
+      headers: this._authHeaders(),
+      body:    JSON.stringify(body),
+    });
+  },
+
+  async delete(endpoint) {
+    return this.request(`${API_BASE_URL}${endpoint}`, {
+      method:  "DELETE",
+      headers: this._authHeaders(),
     });
   },
 };
@@ -1123,6 +1163,36 @@ const openaiSyncCount      = document.getElementById("openaiSyncCount");
 const openaiLastSync       = document.getElementById("openaiLastSync");
 const openaiConnectorId    = document.getElementById("openaiConnectorId");
 
+// Groq DOM
+const groqConnectForm    = document.getElementById("groqConnectForm");
+const groqKeyInput       = document.getElementById("groqKeyInput");
+const groqSubmitBtn      = document.getElementById("groqSubmitBtn");
+const groqFormMessage    = document.getElementById("groqFormMessage");
+const groqStatusBadge    = document.getElementById("groqStatusBadge");
+const groqHealthPanel    = document.getElementById("groqHealthPanel");
+const groqHealthStatus   = document.getElementById("groqHealthStatus");
+const groqConnectorId    = document.getElementById("groqConnectorId");
+
+// Gemini DOM
+const geminiConnectForm    = document.getElementById("geminiConnectForm");
+const geminiKeyInput       = document.getElementById("geminiKeyInput");
+const geminiSubmitBtn      = document.getElementById("geminiSubmitBtn");
+const geminiFormMessage    = document.getElementById("geminiFormMessage");
+const geminiStatusBadge    = document.getElementById("geminiStatusBadge");
+const geminiHealthPanel    = document.getElementById("geminiHealthPanel");
+const geminiHealthStatus   = document.getElementById("geminiHealthStatus");
+const geminiConnectorId    = document.getElementById("geminiConnectorId");
+
+// OpenRouter DOM
+const openrouterConnectForm    = document.getElementById("openrouterConnectForm");
+const openrouterKeyInput       = document.getElementById("openrouterKeyInput");
+const openrouterSubmitBtn      = document.getElementById("openrouterSubmitBtn");
+const openrouterFormMessage    = document.getElementById("openrouterFormMessage");
+const openrouterStatusBadge    = document.getElementById("openrouterStatusBadge");
+const openrouterHealthPanel    = document.getElementById("openrouterHealthPanel");
+const openrouterHealthStatus   = document.getElementById("openrouterHealthStatus");
+const openrouterConnectorId    = document.getElementById("openrouterConnectorId");
+
 // State
 let isOpenAIConnected = false;
 
@@ -1176,6 +1246,129 @@ if (openaiConnectForm) {
     } finally {
       openaiSubmitBtn.disabled = false;
       openaiSubmitBtn.textContent = "Connect API";
+    }
+  });
+}
+
+// ── Groq Form Handler
+if (groqConnectForm) {
+  groqConnectForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const key = groqKeyInput.value.trim();
+    if (!key) return;
+
+    groqSubmitBtn.disabled = true;
+    groqSubmitBtn.textContent = "Connecting...";
+    groqFormMessage.textContent = "";
+
+    try {
+      const res = await apiClient.post("/connectors/groq/connect", {
+        api_key: key,
+        name: "Groq Production",
+        simulation_mode: false
+      });
+
+      if (res._error) throw new Error(res.reason || "Authentication failed");
+
+      groqStatusBadge.textContent = "Connected";
+      groqStatusBadge.className = "panel-badge health-ok";
+      groqFormMessage.textContent = "Successfully authenticated!";
+      groqFormMessage.className = "form-message success";
+      groqKeyInput.value = "";
+      
+      groqHealthPanel.style.display = "block";
+      groqHealthStatus.textContent = "Connected";
+      groqConnectorId.textContent = res.connector_id;
+    } catch (err) {
+      groqFormMessage.textContent = err.message || "Invalid API Key";
+      groqFormMessage.className = "form-message error";
+      groqStatusBadge.textContent = "Error";
+      groqStatusBadge.className = "panel-badge health-critical";
+    } finally {
+      groqSubmitBtn.disabled = false;
+      groqSubmitBtn.textContent = "Connect API";
+    }
+  });
+}
+
+// ── Gemini Form Handler
+if (geminiConnectForm) {
+  geminiConnectForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const key = geminiKeyInput.value.trim();
+    if (!key) return;
+
+    geminiSubmitBtn.disabled = true;
+    geminiSubmitBtn.textContent = "Connecting...";
+    geminiFormMessage.textContent = "";
+
+    try {
+      const res = await apiClient.post("/connectors/gemini/connect", {
+        api_key: key,
+        name: "Gemini Production",
+        simulation_mode: false
+      });
+
+      if (res._error) throw new Error(res.reason || "Authentication failed");
+
+      geminiStatusBadge.textContent = "Connected";
+      geminiStatusBadge.className = "panel-badge health-ok";
+      geminiFormMessage.textContent = "Successfully authenticated!";
+      geminiFormMessage.className = "form-message success";
+      geminiKeyInput.value = "";
+      
+      geminiHealthPanel.style.display = "block";
+      geminiHealthStatus.textContent = "Connected";
+      geminiConnectorId.textContent = res.connector_id;
+    } catch (err) {
+      geminiFormMessage.textContent = err.message || "Invalid API Key";
+      geminiFormMessage.className = "form-message error";
+      geminiStatusBadge.textContent = "Error";
+      geminiStatusBadge.className = "panel-badge health-critical";
+    } finally {
+      geminiSubmitBtn.disabled = false;
+      geminiSubmitBtn.textContent = "Connect API";
+    }
+  });
+}
+
+// ── OpenRouter Form Handler
+if (openrouterConnectForm) {
+  openrouterConnectForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const key = openrouterKeyInput.value.trim();
+    if (!key) return;
+
+    openrouterSubmitBtn.disabled = true;
+    openrouterSubmitBtn.textContent = "Connecting...";
+    openrouterFormMessage.textContent = "";
+
+    try {
+      const res = await apiClient.post("/connectors/openrouter/connect", {
+        api_key: key,
+        name: "OpenRouter Production",
+        simulation_mode: false
+      });
+
+      if (res._error) throw new Error(res.reason || "Authentication failed");
+
+      openrouterStatusBadge.textContent = "Connected";
+      openrouterStatusBadge.className = "panel-badge health-ok";
+      openrouterFormMessage.textContent = "Successfully authenticated!";
+      openrouterFormMessage.className = "form-message success";
+      openrouterKeyInput.value = "";
+      
+      openrouterHealthPanel.style.display = "block";
+      openrouterHealthStatus.textContent = "Connected";
+      openrouterConnectorId.textContent = res.connector_id;
+    } catch (err) {
+      openrouterFormMessage.textContent = err.message || "Invalid API Key";
+      openrouterFormMessage.className = "form-message error";
+      openrouterStatusBadge.textContent = "Error";
+      openrouterStatusBadge.className = "panel-badge health-critical";
+    } finally {
+      openrouterSubmitBtn.disabled = false;
+      openrouterSubmitBtn.textContent = "Connect API";
     }
   });
 }
@@ -1993,4 +2186,49 @@ function renderBizCustomers(customers) {
 // Auto-fetch on page load
 fetchBusinessIntelligence();
 
+// ── Phase 10C: User Profile & Dropdown ───────────────────────────────────────
+
+async function loadUserProfile() {
+  if (isDevMode()) {
+    // Dev mode — display a stub profile
+    renderUserProfile({ email: "dev@qorvexis.local", full_name: "Dev User", role: "Owner", organization_id: null });
+    return;
+  }
+  const data = await apiClient.get("/auth/me");
+  if (data && !data._error) {
+    window._qorvexisUser = data;
+    renderUserProfile(data);
+  }
+}
+
+function renderUserProfile(user) {
+  const initials = (user.full_name || user.email || "Q").split(" ").map(w => w[0]).join("").substring(0, 2).toUpperCase();
+  const el = id => document.getElementById(id);
+  if (el("userAvatar"))       el("userAvatar").textContent       = initials;
+  if (el("userDisplayName"))  el("userDisplayName").textContent  = user.full_name || user.email.split("@")[0];
+  if (el("userRoleBadge"))    el("userRoleBadge").textContent    = user.role;
+  if (el("dropdownName"))     el("dropdownName").textContent     = user.full_name || "—";
+  if (el("dropdownEmail"))    el("dropdownEmail").textContent    = user.email;
+  if (el("dropdownRole"))     el("dropdownRole").textContent     = user.role;
+  if (el("dropdownOrg"))      el("dropdownOrg").textContent      = user.organization_id ? `Org: ${user.organization_id.slice(0,8)}…` : "No organization";
+}
+
+// Toggle dropdown open/close
+const userMenuTrigger = document.getElementById("userMenuTrigger");
+const userDropdown    = document.getElementById("userDropdown");
+if (userMenuTrigger && userDropdown) {
+  userMenuTrigger.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const open = userDropdown.style.display === "block";
+    userDropdown.style.display = open ? "none" : "block";
+    userMenuTrigger.setAttribute("aria-expanded", !open);
+  });
+  document.addEventListener("click", () => {
+    userDropdown.style.display = "none";
+    userMenuTrigger.setAttribute("aria-expanded", "false");
+  });
+}
+
+// Load profile on startup
+loadUserProfile();
 

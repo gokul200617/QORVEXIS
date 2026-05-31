@@ -17,6 +17,8 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from app.auth.dependencies import require_org
+from app.auth.models import UserProfile
 from app.database.session import get_db
 from app.settings import settings
 
@@ -38,7 +40,7 @@ def _unavailable(reason: str = "collector_error") -> dict:
 
 
 @router.get("/infrastructure")
-def metrics_infrastructure(db: Session = Depends(get_db)) -> dict:
+def metrics_infrastructure(user: UserProfile = Depends(require_org), db: Session = Depends(get_db)) -> dict:
     """Full local infrastructure telemetry snapshot with utilization analysis."""
     if not settings.telemetry_enabled:
         return _unavailable("telemetry_disabled")
@@ -50,7 +52,7 @@ def metrics_infrastructure(db: Session = Depends(get_db)) -> dict:
         )
         from app.telemetry.providers.telemetry_provider import telemetry_provider
 
-        snapshot = telemetry_provider.get_snapshot(db=db)
+        snapshot = telemetry_provider.get_snapshot(db=db, org_id=user.organization_id)
         utilization = analyze_utilization(snapshot)
         idle = detect_idle_resources(snapshot, utilization)
 
@@ -65,7 +67,7 @@ def metrics_infrastructure(db: Session = Depends(get_db)) -> dict:
 
 
 @router.get("/gpu")
-def metrics_gpu() -> dict:
+def metrics_gpu(user: UserProfile = Depends(require_org)) -> dict:
     """GPU-specific telemetry metrics."""
     if not settings.telemetry_enabled:
         return {**_unavailable("telemetry_disabled"), "available": False}
@@ -83,7 +85,7 @@ def metrics_gpu() -> dict:
 
 
 @router.get("/recommendations")
-def metrics_recommendations() -> dict:
+def metrics_recommendations(user: UserProfile = Depends(require_org)) -> dict:
     """Deterministic infrastructure optimization recommendations."""
     if not settings.telemetry_enabled:
         return {
@@ -108,7 +110,7 @@ def metrics_recommendations() -> dict:
         # Use cached snapshot if available to avoid double-collect
         snapshot = telemetry_provider.get_latest()
         if snapshot is None:
-            snapshot = telemetry_provider.get_snapshot()
+            snapshot = telemetry_provider.get_snapshot(org_id=user.organization_id)
 
         utilization = analyze_utilization(snapshot)
         queue_snap = queue_manager.snapshot()

@@ -10,6 +10,7 @@ from app.database.session import Base
 
 class WorkloadSignatureRecord(Base):
     __tablename__ = "workload_signatures"
+    organization_id: Mapped[str | None] = mapped_column(String(36), index=True, nullable=True)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     signature: Mapped[str] = mapped_column(String(16), unique=True, index=True, nullable=False)

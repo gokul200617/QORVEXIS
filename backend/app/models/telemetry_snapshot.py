@@ -11,6 +11,8 @@ from app.database.session import Base
 class TelemetrySnapshotRecord(Base):
     __tablename__ = "telemetry_snapshots"
 
+    organization_id: Mapped[str | None] = mapped_column(String(36), index=True, nullable=True)
+
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     source: Mapped[str] = mapped_column(String(32), nullable=False, server_default="local")
     host_identifier: Mapped[str | None] = mapped_column(String(128), nullable=True)
