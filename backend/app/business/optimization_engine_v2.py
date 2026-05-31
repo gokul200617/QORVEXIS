@@ -18,7 +18,7 @@ logger = logging.getLogger("qorvexis.business.optimization")
 
 class OptimizationEngineV2:
 
-    def get_recommendations(self, db: Session) -> list[dict[str, Any]]:
+    def get_recommendations(self, db: Session, org_id: str | None = None) -> list[dict[str, Any]]:
         """Generates prioritized, actionable recommendations with dollar savings."""
         recommendations = []
 
@@ -32,7 +32,7 @@ class OptimizationEngineV2:
         recommendations.sort(key=lambda x: x.get("estimated_savings", 0), reverse=True)
         return recommendations
 
-    def _workload_rules(self, db: Session) -> list[dict]:
+    def _workload_rules(self, db: Session, org_id: str | None = None) -> list[dict]:
         recs = []
         try:
             from app.gateway.gateway_models import GatewayRequestRecord
@@ -129,7 +129,7 @@ class OptimizationEngineV2:
 
         return recs
 
-    def _team_rules(self, db: Session) -> list[dict]:
+    def _team_rules(self, db: Session, org_id: str | None = None) -> list[dict]:
         recs = []
         try:
             from app.gateway.gateway_models import GatewayRequestRecord

@@ -24,7 +24,7 @@ class BusinessIntelligenceService:
 
     # ── Workload Attribution ──────────────────────────────────────────────────
 
-    def get_workloads(self, db: Session) -> list[dict[str, Any]]:
+    def get_workloads(self, db: Session, org_id: str | None = None) -> list[dict[str, Any]]:
         """Returns spend, requests, tokens, and latency grouped by workload."""
         try:
             from app.gateway.gateway_models import GatewayRequestRecord
@@ -40,9 +40,11 @@ class BusinessIntelligenceService:
                 func.avg(
                     func.cast(GatewayRequestRecord.success, db.bind.dialect.name == "sqlite" and "INTEGER" or "INTEGER")
                 ).label("success_rate_raw"),
-            ).filter(
-                GatewayRequestRecord.workload_id.isnot(None)
-            ).group_by(
+            )
+            if org_id:
+                query = query.filter(GatewayRequestRecord.organization_id == org_id)
+                
+            results = query.group_by(
                 GatewayRequestRecord.workload_id,
                 GatewayRequestRecord.workload_name,
                 GatewayRequestRecord.provider,
@@ -67,7 +69,7 @@ class BusinessIntelligenceService:
             "success_rate": 100.0,  # simplified
         }
 
-    def _fallback_workloads(self, db: Session) -> list[dict]:
+    def _fallback_workloads(self, db: Session, org_id: str | None = None) -> list[dict]:
         """Fall back to TokenTelemetryRecord when gateway has no workload data."""
         try:
             from app.token_intelligence.models.token_tracking import TokenTelemetryRecord
@@ -80,9 +82,11 @@ class BusinessIntelligenceService:
                 func.sum(TokenTelemetryRecord.estimated_cost).label("monthly_cost"),
                 func.sum(TokenTelemetryRecord.total_tokens).label("monthly_tokens"),
                 func.avg(TokenTelemetryRecord.latency_ms).label("avg_latency"),
-            ).filter(
-                TokenTelemetryRecord.workload_signature.isnot(None)
-            ).group_by(
+            )
+            if org_id:
+                query = query.filter(TokenTelemetryRecord.organization_id == org_id)
+                
+            results = query.group_by(
                 TokenTelemetryRecord.workload_signature,
                 TokenTelemetryRecord.request_category,
                 TokenTelemetryRecord.provider,
@@ -105,7 +109,7 @@ class BusinessIntelligenceService:
 
     # ── Team Attribution ──────────────────────────────────────────────────────
 
-    def get_teams(self, db: Session) -> list[dict[str, Any]]:
+    def get_teams(self, db: Session, org_id: str | None = None) -> list[dict[str, Any]]:
         """Returns spend, tokens, and optimization score per team."""
         try:
             from app.gateway.gateway_models import GatewayRequestRecord
@@ -115,9 +119,11 @@ class BusinessIntelligenceService:
                 func.count(GatewayRequestRecord.id).label("request_count"),
                 func.sum(GatewayRequestRecord.estimated_cost).label("monthly_cost"),
                 func.sum(GatewayRequestRecord.total_tokens).label("token_usage"),
-            ).filter(
-                GatewayRequestRecord.team_id.isnot(None)
-            ).group_by(
+            )
+            if org_id:
+                query = query.filter(GatewayRequestRecord.organization_id == org_id)
+                
+            results = query.group_by(
                 GatewayRequestRecord.team_id,
                 GatewayRequestRecord.team_name,
             ).order_by(func.sum(GatewayRequestRecord.estimated_cost).desc()).all()
@@ -143,7 +149,7 @@ class BusinessIntelligenceService:
 
     # ── Customer Attribution ──────────────────────────────────────────────────
 
-    def get_customers(self, db: Session) -> list[dict[str, Any]]:
+    def get_customers(self, db: Session, org_id: str | None = None) -> list[dict[str, Any]]:
         """Returns spend, tokens, and provider distribution per customer."""
         try:
             from app.gateway.gateway_models import GatewayRequestRecord
@@ -153,9 +159,11 @@ class BusinessIntelligenceService:
                 func.count(GatewayRequestRecord.id).label("request_count"),
                 func.sum(GatewayRequestRecord.estimated_cost).label("monthly_cost"),
                 func.sum(GatewayRequestRecord.total_tokens).label("tokens"),
-            ).filter(
-                GatewayRequestRecord.customer_id.isnot(None)
-            ).group_by(
+            )
+            if org_id:
+                query = query.filter(GatewayRequestRecord.organization_id == org_id)
+                
+            results = query.group_by(
                 GatewayRequestRecord.customer_id,
                 GatewayRequestRecord.customer_name,
             ).order_by(func.sum(GatewayRequestRecord.estimated_cost).desc()).all()
@@ -173,7 +181,7 @@ class BusinessIntelligenceService:
 
     # ── Executive Summary ─────────────────────────────────────────────────────
 
-    def get_summary(self, db: Session) -> dict[str, Any]:
+    def get_summary(self, db: Session, org_id: str | None = None) -> dict[str, Any]:
         """Returns executive-level KPI payload."""
         try:
             from app.gateway.gateway_models import GatewayRequestRecord
@@ -181,22 +189,33 @@ class BusinessIntelligenceService:
             from app.connectors.models.provider_usage_snapshot import ProviderUsageSnapshot
 
             # Total spend from gateway
-            gw_spend = float(db.query(func.sum(GatewayRequestRecord.estimated_cost)).scalar() or 0.0)
-            gw_requests = db.query(func.count(GatewayRequestRecord.id)).scalar() or 0
+            gw_query = db.query(func.sum(GatewayRequestRecord.estimated_cost))
+            gw_req_query = db.query(func.count(GatewayRequestRecord.id))
+            if org_id:
+                gw_query = gw_query.filter(GatewayRequestRecord.organization_id == org_id)
+                gw_req_query = gw_req_query.filter(GatewayRequestRecord.organization_id == org_id)
+            gw_spend = float(gw_query.scalar() or 0.0)
+            gw_requests = gw_req_query.scalar() or 0
 
             # Fallback total spend from token intelligence
-            ti_spend = float(db.query(func.sum(TokenTelemetryRecord.estimated_cost)).scalar() or 0.0)
+            ti_query = db.query(func.sum(TokenTelemetryRecord.estimated_cost))
+            if org_id:
+                ti_query = ti_query.filter(TokenTelemetryRecord.organization_id == org_id)
+            ti_spend = float(ti_query.scalar() or 0.0)
             observed_spend = gw_spend + ti_spend
 
             # Provider snapshot spend
-            provider_spend = float(db.query(func.sum(ProviderUsageSnapshot.estimated_cost)).scalar() or 0.0)
+            ps_query = db.query(func.sum(ProviderUsageSnapshot.estimated_cost))
+            if org_id:
+                ps_query = ps_query.filter(ProviderUsageSnapshot.organization_id == org_id)
+            provider_spend = float(ps_query.scalar() or 0.0)
 
             # Explicit aggregation strategy to avoid double counting
             total_spend = max(provider_spend, observed_spend)
 
-            workloads = self.get_workloads(db)
-            teams = self.get_teams(db)
-            customers = self.get_customers(db)
+            workloads = self.get_workloads(db, org_id)
+            teams = self.get_teams(db, org_id)
+            customers = self.get_customers(db, org_id)
 
             top_workload = max(workloads, key=lambda x: x["monthly_cost"], default=None)
             top_team = max(teams, key=lambda x: x["monthly_cost"], default=None)

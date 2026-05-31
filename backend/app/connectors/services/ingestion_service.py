@@ -18,7 +18,7 @@ class IngestionService:
     """Coordinates telemetry ingestion from connectors to the DB."""
 
     @staticmethod
-    def run_sync(db: Session, connector: BaseConnector) -> IngestionResult:
+    def run_sync(db: Session, connector: BaseConnector, org_id: str | None = None) -> IngestionResult:
         """Execute a full sync cycle for a single connector."""
         
         logger.info("ingestion.sync_start id=%s", connector.connector_id)

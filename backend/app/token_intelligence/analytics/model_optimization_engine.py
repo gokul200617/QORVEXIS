@@ -14,7 +14,7 @@ from app.token_intelligence.models.token_tracking import TokenTelemetryRecord
 from app.token_intelligence.pricing.pricing_engine import estimate_monthly_cost, estimate_cost
 
 
-def generate_recommendations(db: Session) -> List[Dict[str, Any]]:
+def generate_recommendations(db: Session, org_id: str | None = None) -> List[Dict[str, Any]]:
     """Analyze recent telemetry to generate cost optimization recommendations."""
     recommendations = []
     

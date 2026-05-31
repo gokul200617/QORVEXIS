@@ -15,7 +15,7 @@ class ConnectorService:
     """Manages persistence of connector configuration and metadata."""
 
     @staticmethod
-    def create_connector(db: Session, req: ConnectorCreateRequest) -> ConnectorInstance:
+    def create_connector(db: Session, req: ConnectorCreateRequest, org_id: str | None = None) -> ConnectorInstance:
         """Register a new connector instance in the database."""
         
         # 1. Create instance record
@@ -25,6 +25,7 @@ class ConnectorService:
             connector_type=req.connector_type.value,
             description=req.description,
             status=ConnectorStatus.DISCONNECTED.value,
+            organization_id=org_id,
         )
         db.add(instance)
         
@@ -53,7 +54,7 @@ class ConnectorService:
         ).scalar_one_or_none()
 
     @staticmethod
-    def list_connectors(db: Session) -> list[ConnectorInstance]:
+    def list_connectors(db: Session, org_id: str | None = None) -> list[ConnectorInstance]:
         """Fetch all registered connectors."""
         return list(db.execute(select(ConnectorInstance)).scalars().all())
 

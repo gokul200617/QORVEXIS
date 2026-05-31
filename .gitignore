@@ -174,3 +174,31 @@ reports/
 backups/
 temp/
 tmp/
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+operational_history.jsonl
+*.log
+
+# Test scripts
+test_*.py
+validate_*.py
+run_validation.py
+
+# Local utilities
+generate_test_traffic.py
+sync_gateway_to_telemetry.py
+fix_org_id.py
+
+# Python
+__pycache__/
+*.pyc
+
+# Environments
+.env
+.env.*
+.venv/
+venv/

@@ -12,7 +12,7 @@ from app.connectors.base.connector_types import ConnectorType
 
 
 class ProviderSummaryService:
-    def get_summary(self, db: Session) -> dict:
+    def get_summary(self, db: Session, org_id: str | None = None) -> dict:
         """Returns the high-level KPI dashboard payload for AI providers."""
         dist = provider_intelligence_service.get_provider_distribution(db)
         recs = provider_optimization_engine.generate_recommendations(db)

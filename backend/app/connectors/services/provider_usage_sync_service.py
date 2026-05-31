@@ -27,7 +27,7 @@ class ProviderUsageSyncService:
         self.sync_errors: int = 0
         self.sync_duration_ms: float = 0.0
 
-    def sync_all(self, db: Session) -> dict:
+    def sync_all(self, db: Session, org_id: str | None = None) -> dict:
         """Synchronizes usage across all capable connected providers."""
         if self.sync_status == "running":
             return self.get_status()

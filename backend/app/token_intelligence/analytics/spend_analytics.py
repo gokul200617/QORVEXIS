@@ -41,7 +41,7 @@ def get_top_costly_workloads(db: Session, limit: int = 5) -> List[Dict[str, Any]
     ]
 
 
-def get_top_cost_drivers(db: Session) -> Dict[str, List[Dict[str, Any]]]:
+def get_top_cost_drivers(db: Session, org_id: str | None = None) -> Dict[str, List[Dict[str, Any]]]:
     """Break down costs by model and category."""
     
     by_model = db.query(
@@ -92,7 +92,7 @@ def get_high_inflation_workloads(db: Session, limit: int = 5) -> List[Dict[str, 
     ]
 
 
-def get_overall_spend_summary(db: Session) -> dict:
+def get_overall_spend_summary(db: Session, org_id: str | None = None) -> dict:
     """Get overall cost and token summary."""
     result = db.query(
         func.sum(TokenTelemetryRecord.estimated_cost).label("total_cost"),

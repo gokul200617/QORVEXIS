@@ -16,7 +16,7 @@ logger = logging.getLogger("qorvexis.connectors.visibility")
 
 
 class ProviderVisibilityService:
-    def get_visibility_report(self, db: Session) -> dict:
+    def get_visibility_report(self, db: Session, org_id: str | None = None) -> dict:
         """Returns the visibility status for all connected providers."""
         connectors = connector_registry.list_all()
         

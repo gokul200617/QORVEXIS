@@ -19,7 +19,7 @@ logger = logging.getLogger("qorvexis.business.forecasting")
 
 class ForecastingEngine:
 
-    def get_forecast(self, db: Session) -> dict[str, Any]:
+    def get_forecast(self, db: Session, org_id: str | None = None) -> dict[str, Any]:
         """Projects 7, 30, and 90-day spend from recent daily averages."""
         try:
             daily_spend = self._get_daily_spend(db)
@@ -59,7 +59,7 @@ class ForecastingEngine:
             logger.warning("forecasting.error detail=%s", exc)
             return self._empty_forecast()
 
-    def _get_daily_spend(self, db: Session) -> list[dict]:
+    def _get_daily_spend(self, db: Session, org_id: str | None = None) -> list[dict]:
         """Combines gateway + token intelligence spend into a daily series."""
         # Fetch last 30 days from both tables
         cutoff = datetime.now(timezone.utc) - timedelta(days=30)

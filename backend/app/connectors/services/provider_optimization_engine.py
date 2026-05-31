@@ -11,7 +11,7 @@ from typing import Any
 
 
 class ProviderOptimizationEngine:
-    def get_workload_attributions(self, db: Session) -> list[dict[str, Any]]:
+    def get_workload_attributions(self, db: Session, org_id: str | None = None) -> list[dict[str, Any]]:
         """Groups token telemetry by workload_signature to find spend vectors."""
         # Query total spend, requests, tokens, average latency per workload signature
         results = db.query(
@@ -48,7 +48,7 @@ class ProviderOptimizationEngine:
         workloads.sort(key=lambda x: x["spend"], reverse=True)
         return workloads
 
-    def generate_recommendations(self, db: Session) -> list[dict[str, Any]]:
+    def generate_recommendations(self, db: Session, org_id: str | None = None) -> list[dict[str, Any]]:
         """Analyzes workloads and applies deterministic routing rules."""
         workloads = self.get_workload_attributions(db)
         recommendations = []

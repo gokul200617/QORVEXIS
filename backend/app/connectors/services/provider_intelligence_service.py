@@ -14,7 +14,7 @@ from app.connectors.base.connector_types import ConnectorType
 
 
 class ProviderIntelligenceService:
-    def get_provider_distribution(self, db: Session) -> dict[str, dict[str, Any]]:
+    def get_provider_distribution(self, db: Session, org_id: str | None = None) -> dict[str, dict[str, Any]]:
         """Returns requests, cost, and latency per provider."""
         results = db.query(
             TokenTelemetryRecord.provider,
@@ -49,7 +49,7 @@ class ProviderIntelligenceService:
 
         return distribution
 
-    def get_provider_comparison(self, db: Session) -> list[dict[str, Any]]:
+    def get_provider_comparison(self, db: Session, org_id: str | None = None) -> list[dict[str, Any]]:
         """Ranks providers across multiple dimensions."""
         dist = self.get_provider_distribution(db)
         if not dist:

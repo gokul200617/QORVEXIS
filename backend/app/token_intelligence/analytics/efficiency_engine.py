@@ -11,7 +11,7 @@ from app.token_intelligence.models.token_tracking import TokenTelemetryRecord
 from app.token_intelligence.models.workload_signature import WorkloadSignatureRecord
 
 
-def compute_efficiency_metrics(db: Session) -> dict:
+def compute_efficiency_metrics(db: Session, org_id: str | None = None) -> dict:
     """Compute overall infrastructure token efficiency."""
     
     # Total requests
