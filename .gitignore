@@ -1,31 +1,176 @@
-backend/operational_history.jsonl
+# =========================
 
-# Environment variables
+# ENVIRONMENT VARIABLES
+
+# =========================
+
 .env
-.env.local
-.env.production
-.env.development
+.env.*
 backend/.env
+frontend/.env
 
-# Keys and credentials
-*.key
-*.pem
-credentials.json
-service_account.json
+# =========================
 
-# Test and script files
-test_*.py
+# DATABASES
 
-# Python
-__pycache__/
-*.pyc
+# =========================
+
+*.db
+*.sqlite
+*.sqlite3
+
+# =========================
+
+# PYTHON
+
+# =========================
+
+**pycache**/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+
+# =========================
+
+# VIRTUAL ENVIRONMENTS
+
+# =========================
+
 .venv/
 venv/
-backend/test.db
+env/
+ENV/
+backend/.venv/
 
-# Node
+# =========================
+
+# IDE FILES
+
+# =========================
+
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+
+# OS FILES
+
+# =========================
+
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# =========================
+
+# LOG FILES
+
+# =========================
+
+*.log
+logs/
+
+# =========================
+
+# TELEMETRY & GENERATED DATA
+
+# =========================
+
+backend/operational_history.jsonl
+*.jsonl
+
+# =========================
+
+# VALIDATION OUTPUTS
+
+# =========================
+
+validation_results.json
+backend/validation_results.json
+*_report.json
+
+# =========================
+
+# TEST FILES
+
+# =========================
+
+test_*.py
+*_test.py
+
+# =========================
+
+# SECRETS & CREDENTIALS
+
+# =========================
+
+*.pem
+*.key
+*.crt
+credentials.json
+service_account.json
+secrets.json
+
+# =========================
+
+# BUILD FILES
+
+# =========================
+
+dist/
+build/
+*.egg-info/
+
+# =========================
+
+# CACHE
+
+# =========================
+
+.cache/
+.pytest_cache/
+.mypy_cache/
+
+# =========================
+
+# JUPYTER
+
+# =========================
+
+.ipynb_checkpoints/
+
+# =========================
+
+# AWS
+
+# =========================
+
+.aws/
+terraform.tfstate
+terraform.tfstate.backup
+
+# =========================
+
+# NODE
+
+# =========================
+
 node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# Other
-taste-skill-main/
-frontend.txt
+# =========================
+
+# LOCAL EXPORTS
+
+# =========================
+
+exports/
+reports/
+backups/
+temp/
+tmp/
