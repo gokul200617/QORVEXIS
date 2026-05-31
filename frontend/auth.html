@@ -308,8 +308,8 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 // ── Configure Supabase here when you have credentials ───────────────────────
-const SUPABASE_URL      = "";   // e.g. "https://xyz.supabase.co"
-const SUPABASE_ANON_KEY = "";   // your anon/public key
+const SUPABASE_URL      = "https://eihnayqcctdahnsspzfe.supabase.co";   // mapped from backend env
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy_anon_key";   // need actual anon key from user
 
 let sbClient = null;
 
@@ -432,8 +432,15 @@ function loadSupabase(callback) {
   var script = document.createElement("script");
   script.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js";
   script.onload = function() {
-    sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    callback(sbClient);
+    try {
+      sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      callback(sbClient);
+    } catch(err) {
+      showMsg("siMsg", "Config error: " + err.message, "error");
+      showMsg("suMsg", "Config error: " + err.message, "error");
+      setLoading("siBtn", false);
+      setLoading("suBtn", false);
+    }
   };
   script.onerror = function() {
     showMsg("siMsg", "Could not load Supabase. Check your internet connection.", "error");

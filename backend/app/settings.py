@@ -8,9 +8,10 @@ ENV_PATH = Path(__file__).parent.parent / ".env"
 
 class Settings(BaseSettings):
     app_name: str = "Qorvexis API"
-    supabase_url: str | None = None
-    supabase_jwt_secret: str | None = None  # Phase 10C — JWT verification secret
-    credential_encryption_key: str | None = None  # Phase 10D — Fernet key for credential encryption
+    supabase_url: str
+    supabase_anon_key: str
+    supabase_jwt_secret: str  # Phase 10C — JWT verification secret
+    credential_encryption_key: str  # Phase 10D — Fernet key for credential encryption
     database_url: str
     gemini_api_key: str | None = None
     groq_api_key: str | None = None

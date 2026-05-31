@@ -105,13 +105,7 @@ def create_app() -> FastAPI:
         queue_manager.start()
         start_recovery_sweeper()
 
-        # Phase 10D: Validate credential encryption key is set
-        if not settings.credential_encryption_key:
-            logger.warning(
-                "security.credential_encryption_key.MISSING — "
-                "Provider credentials will NOT be encrypted at rest. "
-                "Set CREDENTIAL_ENCRYPTION_KEY in .env to enable encryption."
-            )
+
 
         # Phase 5 — initialize operational intelligence singletons
         from app.services.provider_scorer import provider_scorer  # noqa: F401
