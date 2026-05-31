@@ -19,7 +19,7 @@ import re
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -27,6 +27,8 @@ from app.auth.dependencies import get_current_user, log_audit, require_permissio
 from app.auth.models import AuditLog, Organization, Team, UserProfile
 from app.auth.rbac import get_permissions
 from app.database.session import get_db
+from app.security.rate_limiter import limiter
+from app.settings import settings
 
 logger = logging.getLogger("qorvexis.routes.auth")
 
@@ -99,6 +101,49 @@ def _slugify(name: str) -> str:
     slug = name.lower().strip()
     slug = re.sub(r"[^a-z0-9]+", "-", slug)
     return slug[:64].strip("-")
+
+
+# ── Stub endpoints for Supabase-handled flows (rate-limited) ─────────────────
+# Login/signup/reset are handled by Supabase Auth frontend SDK.
+# These stubs exist so the rate limiter applies to any direct API calls.
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+@router.post("/login")
+@limiter.limit(settings.rate_limit_auth_endpoints)
+def stub_login(req: LoginRequest, request: Request):
+    """Login is handled by Supabase. This endpoint rate-limits brute-force attempts."""
+    raise HTTPException(
+        status_code=400,
+        detail="Direct login not supported. Use Supabase Auth SDK from the frontend.",
+    )
+
+class SignupRequest(BaseModel):
+    email: str
+    password: str
+
+@router.post("/signup")
+@limiter.limit(settings.rate_limit_auth_endpoints)
+def stub_signup(req: SignupRequest, request: Request):
+    """Signup is handled by Supabase. Rate-limited to prevent account enumeration."""
+    raise HTTPException(
+        status_code=400,
+        detail="Direct signup not supported. Use Supabase Auth SDK from the frontend.",
+    )
+
+class ResetPasswordRequest(BaseModel):
+    email: str
+
+@router.post("/reset-password")
+@limiter.limit(settings.rate_limit_auth_endpoints)
+def stub_reset_password(req: ResetPasswordRequest, request: Request):
+    """Reset-password is handled by Supabase. Rate-limited to prevent email flooding."""
+    raise HTTPException(
+        status_code=400,
+        detail="Direct reset not supported. Use Supabase Auth SDK from the frontend.",
+    )
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
@@ -271,29 +316,40 @@ def invite_member(
 
 @router.get("/audit")
 def get_audit_logs(
-    limit: int = 50,
+    page: int = 1,
+    page_size: int = 50,
     user: UserProfile = Depends(require_permission("can_view_audit_logs")),
     db: Session = Depends(get_db),
 ):
-    """Return audit logs for the current organization."""
+    """Return paginated audit logs for the current organization."""
+    if page_size > 200:
+        page_size = 200
+    offset = (page - 1) * page_size
     logs = (
         db.query(AuditLog)
         .filter_by(organization_id=user.organization_id)
         .order_by(AuditLog.timestamp.desc())
-        .limit(limit)
+        .offset(offset)
+        .limit(page_size)
         .all()
     )
-    return [
-        {
-            "id": l.id,
-            "user_id": l.user_id,
-            "action": l.action,
-            "target": l.target,
-            "metadata": l.event_metadata,
-            "timestamp": l.timestamp.isoformat(),
-        }
-        for l in logs
-    ]
+    total = db.query(AuditLog).filter_by(organization_id=user.organization_id).count()
+    return {
+        "page": page,
+        "page_size": page_size,
+        "total": total,
+        "results": [
+            {
+                "id": l.id,
+                "user_id": l.user_id,
+                "action": l.action,
+                "target": l.target,
+                "metadata": l.event_metadata,
+                "timestamp": l.timestamp.isoformat(),
+            }
+            for l in logs
+        ],
+    }
 
 
 @router.get("/teams", response_model=list[TeamResponse])

@@ -84,8 +84,12 @@ class TelemetryProvider:
             logger.warning("telemetry.persist_failed error=%s", exc)
             try:
                 db.rollback()
-            except Exception:
-                pass
+            except Exception as rb_exc:
+                logger.warning(
+                    "telemetry.rollback_failed service=telemetry_provider "
+                    "event=rollback_error exception_type=%s message=%s",
+                    type(rb_exc).__name__, rb_exc,
+                )
 
 
 telemetry_provider = TelemetryProvider()

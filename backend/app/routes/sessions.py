@@ -22,12 +22,24 @@ def create_operational_session(
 
 @router.get("", response_model=list[SessionSummary])
 def list_operational_sessions(
+    page: int = 1,
+    page_size: int = 40,
     user: UserProfile = Depends(require_org),
     db: Session = Depends(get_db)
 ) -> list[SessionSummary]:
+    if page_size > 200:
+        page_size = 200
+    from app.models.inference_session import InferenceSession
+    from app.services.session_service import cleanup_stale_sessions
+    cleanup_stale_sessions(db, org_id=user.organization_id)
+    offset = (page - 1) * page_size
+    q = db.query(InferenceSession)
+    if user.organization_id:
+        q = q.filter(InferenceSession.organization_id == user.organization_id)
+    sessions = q.order_by(InferenceSession.updated_at.desc()).offset(offset).limit(page_size).all()
     return [
         SessionSummary.model_validate(session, from_attributes=True)
-        for session in list_sessions(db, org_id=user.organization_id)
+        for session in sessions
     ]
 
 

@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     app_name: str = "Qorvexis API"
     supabase_url: str | None = None
     supabase_jwt_secret: str | None = None  # Phase 10C — JWT verification secret
+    credential_encryption_key: str | None = None  # Phase 10D — Fernet key for credential encryption
     database_url: str
     gemini_api_key: str | None = None
     groq_api_key: str | None = None
@@ -46,6 +47,13 @@ class Settings(BaseSettings):
     telemetry_ram_high_threshold: float = 90.0
     telemetry_cache_low_threshold: float = 30.0
     telemetry_queue_pressure_threshold: float = 0.80
+
+    # Phase 10D — Security Hardening
+    rate_limit_anonymous: str = "10/minute"
+    rate_limit_authenticated: str = "60/minute"
+    rate_limit_auth_endpoints: str = "5/minute"  # login, signup, reset
+    rate_limit_ask: str = "20/minute"
+    rate_limit_gateway: str = "30/minute"
 
     model_config = SettingsConfigDict(
         env_file=str(ENV_PATH),

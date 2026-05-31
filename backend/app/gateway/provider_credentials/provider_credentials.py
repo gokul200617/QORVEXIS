@@ -12,7 +12,7 @@ class ProviderCredential(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     provider: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
-    encrypted_key: Mapped[str] = mapped_column(String(512), nullable=False) # In production this would be encrypted
+    encrypted_key: Mapped[str] = mapped_column(String(1024), nullable=False)  # Fernet-encrypted at rest
     masked_key: Mapped[str] = mapped_column(String(64), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     

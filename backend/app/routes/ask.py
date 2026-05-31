@@ -1,7 +1,7 @@
 import logging
 from concurrent.futures import TimeoutError
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.auth.dependencies import require_org
@@ -13,6 +13,8 @@ from app.orchestration.queue_manager import queue_manager
 from app.orchestration.scheduler import assign_priority
 from app.providers import ProviderError
 from app.routes.schemas import AskRequest, AskResponse
+from app.security.prompt_guard import check_prompt
+from app.security.rate_limiter import limiter
 from app.services.cost_tracker import cost_tracker
 from app.services.dedup_tracker import dedup_tracker
 from app.services.request_service import create_queued_request
@@ -28,10 +30,18 @@ logger = logging.getLogger("qorvexis.request")
 
 
 @router.post("/ask", response_model=AskResponse)
+@limiter.limit(settings.rate_limit_ask)
 def ask(
+    request: Request,
     payload: AskRequest,
     user: UserProfile = Depends(require_org),
 ) -> AskResponse:
+    guard = check_prompt(payload.prompt)
+    if not guard.allowed:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Request blocked: {guard.reason}",
+        )
     with trace_context(session_id=payload.session_id):
         return _ask_traced(payload, user.organization_id)
 

@@ -7,7 +7,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from app.auth.dependencies import require_org
+from app.auth.dependencies import log_audit, require_org
 from app.auth.models import UserProfile
 from app.connectors.base.connector_types import ConnectorType
 from app.connectors.health.connector_health_service import connector_health_service
@@ -91,6 +91,7 @@ def authenticate_openai(req: OpenAIAccountRequest, user: UserProfile = Depends(r
     )
     instance = connector_service.create_connector(db, create_req, org_id=user.organization_id)
     ingestion_service.run_sync(db, connector, org_id=user.organization_id)
+    log_audit(db, user, "provider.added", target="openai", metadata={"connector_id": connector_id})
     return instance
 
 

@@ -13,7 +13,7 @@ logger = logging.getLogger("qorvexis.gateway.service")
 class GatewayService:
     """Proxy and observe AI requests using resilient providers."""
 
-    def execute(self, req: GatewayChatRequest) -> GatewayChatResponse:
+    def execute(self, req: GatewayChatRequest, org_id: str | None = None) -> GatewayChatResponse:
         request_id = str(uuid.uuid4())
         
         # 1. Define the execution closure that failover will call

@@ -70,8 +70,12 @@ class TokenTrackingService:
             
         try:
             self.executor.submit(self._ingest_with_retry, telemetry)
-        except Exception:
-            pass # Executor queue full or shutdown
+        except Exception as exc:
+            logger.warning(
+                "token_intelligence.submit_failed service=token_tracking "
+                "event=executor_queue_full exception_type=%s message=%s",
+                type(exc).__name__, exc,
+            )
 
     def _ingest_with_retry(self, data: TokenTelemetryCreate) -> None:
         retries = 1
@@ -110,16 +114,24 @@ class TokenTrackingService:
                             data.completion_tokens, 
                             data.model
                         )
-            except Exception:
-                pass # Partial Acceptance
+            except Exception as exc:
+                logger.debug(
+                    "token_intelligence.signature_failed service=token_tracking "
+                    "event=signature_generation_skipped exception_type=%s message=%s",
+                    type(exc).__name__, exc,
+                )
 
             # 2. Compute true pricing
             cost = data.estimated_cost
             try:
                 if cost == 0.0 and (data.prompt_tokens > 0 or data.completion_tokens > 0):
                     cost = estimate_cost(data.provider, data.model, data.prompt_tokens, data.completion_tokens)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug(
+                    "token_intelligence.cost_estimation_failed service=token_tracking "
+                    "event=cost_skipped exception_type=%s message=%s",
+                    type(exc).__name__, exc,
+                )
 
             # 3. Compute inflation ratio
             inflation_ratio = None
@@ -132,8 +144,12 @@ class TokenTrackingService:
                 for anomaly in anomalies:
                     level = logging.WARNING if anomaly["severity"] == "warning" else logging.ERROR
                     logger.log(level, f"token_anomaly type={anomaly['type']} detail='{anomaly['detail']}'")
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug(
+                    "token_intelligence.anomaly_check_failed service=token_tracking "
+                    "event=anomaly_detection_skipped exception_type=%s message=%s",
+                    type(exc).__name__, exc,
+                )
 
             # 5. Persist Workload Signature stats
             if signature:

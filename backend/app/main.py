@@ -2,8 +2,10 @@ import logging
 import threading
 import time
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
 
 from app import models  # noqa: F401
 from app.auth import models as auth_models  # noqa: F401 — Phase 10C: register auth tables
@@ -15,6 +17,8 @@ from app.routes.sessions import router as sessions_router
 from app.routes.telemetry import router as telemetry_router
 from app.routes.connectors import router as connectors_router
 from app.routes.token_analytics import router as token_analytics_router
+from app.security.headers_middleware import SecurityHeadersMiddleware
+from app.security.rate_limiter import limiter
 from app.settings import settings
 
 
@@ -47,6 +51,9 @@ def create_app() -> FastAPI:
         description="Foundational API for the Qorvexis infrastructure platform.",
     )
 
+    # ── Phase 10D: Security headers on every response ────────────────────────
+    app.add_middleware(SecurityHeadersMiddleware)
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
@@ -54,6 +61,20 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # ── Phase 10D: Rate limiter state attached to app ────────────────────────
+    app.state.limiter = limiter
+
+    @app.exception_handler(RateLimitExceeded)
+    async def _rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
+        return JSONResponse(
+            status_code=429,
+            content={
+                "error": "rate_limit_exceeded",
+                "detail": f"Too many requests. Limit: {exc.detail}. Please slow down.",
+            },
+            headers={"Retry-After": "60"},
+        )
 
     from fastapi import Depends
     from app.auth.dependencies import require_org
@@ -83,6 +104,14 @@ def create_app() -> FastAPI:
         initialize_database()
         queue_manager.start()
         start_recovery_sweeper()
+
+        # Phase 10D: Validate credential encryption key is set
+        if not settings.credential_encryption_key:
+            logger.warning(
+                "security.credential_encryption_key.MISSING — "
+                "Provider credentials will NOT be encrypted at rest. "
+                "Set CREDENTIAL_ENCRYPTION_KEY in .env to enable encryption."
+            )
 
         # Phase 5 — initialize operational intelligence singletons
         from app.services.provider_scorer import provider_scorer  # noqa: F401
@@ -114,6 +143,8 @@ def create_app() -> FastAPI:
         from app.gateway.gateway_telemetry import gateway_telemetry  # noqa: F401
         from app.business.business_intelligence_service import business_intelligence_service  # noqa: F401
         logger.info("phase10.ai_gateway.business_intelligence.ready")
+
+        logger.info("phase10d.security_hardening.ready")
 
     @app.get("/health")
     def health_check() -> dict[str, str | None]:
